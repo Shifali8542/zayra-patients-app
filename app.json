@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Zayra Patients",
+    "slug": "zayra-patients",
+    "version": "1.0.0",
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#D6F3F0"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zayra.patients"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#D6F3F0"
+      },
+      "package": "com.zayra.patients"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": ["expo-font"]
+  }
+}
