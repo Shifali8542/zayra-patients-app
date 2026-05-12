@@ -13,7 +13,7 @@ export const ecgStyles = StyleSheet.create({
   recordTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
   recordTabText: { letterSpacing: 0.3 },
 
-  // ── Records sub-screen ─────────────────────────────────────────────────────
+  // Records sub-screen
   recordsList: { padding: 16, gap: 12, paddingBottom: 24 },
   recordCard: { borderRadius: 20, padding: 16, borderWidth: 1 },
   recordHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
@@ -27,7 +27,7 @@ export const ecgStyles = StyleSheet.create({
   recordActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   recordActionText: {},
 
-  // ── Waveform sub-screen ────────────────────────────────────────────────────
+  //Waveform sub-screen 
   waveformScroll: { flex: 1 },
   waveformContent: { padding: 16, paddingBottom: 24, gap: 12 },
   waveformCard: { borderRadius: 20, borderWidth: 1, padding: 16 },
@@ -72,7 +72,21 @@ export const ecgStyles = StyleSheet.create({
   findingText: { flex: 1, lineHeight: 18 },
   recommendationBox: {},
 
-  // ── Shared ─────────────────────────────────────────────────────────────────
+
+  // Segment tabs (Before / During / After)
+  segmentTabs: { flexDirection: 'row', gap: 6, marginBottom: 8, marginTop: 4 },
+  segmentTab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
+  segmentTabText: { letterSpacing: 0.5, textTransform: 'uppercase' },
+  segmentTimeLabel: { textAlign: 'right', marginTop: 4, letterSpacing: 0.3 },
+
+  // Lead switcher 
+  leadSwitcherWrap: { marginTop: 12 },
+  leadSwitcherLabel: { letterSpacing: 2, marginBottom: 6 },
+  leadSwitcher: { gap: 6, paddingBottom: 2 },
+  leadBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  leadBtnText: { letterSpacing: 0.5 },
+
+  // Shared 
   emptyCard: { borderRadius: 20, borderWidth: 1, padding: 32, alignItems: 'center', gap: 10 },
   emptyText: { textAlign: 'center', lineHeight: 20 },
   reportLoading: { alignItems: 'center', paddingVertical: 48, gap: 10 },

@@ -122,9 +122,31 @@ export interface ClinicalInfo {
 }
 
 // WaveformData
+export interface WaveformSegment {
+  samples: number[];
+  start_sec: number;
+  end_sec: number;
+}
+
+export interface WaveformSegments {
+  before: WaveformSegment;
+  anomaly: WaveformSegment;
+  after: WaveformSegment;
+}
+
+export interface WaveformSegment {
+  samples: number[];
+  start_sec: number;
+  end_sec: number;
+}
+
 export interface WaveformData {
   patient_code: string;
+  record_id: number;
   record_name: string;
+  record_label: string;
+  record_index: number;
+  total_records: number;
   diagnosis: string | null;
   age: number | null;
   sex: string | null;
@@ -133,6 +155,8 @@ export interface WaveformData {
   num_samples: number;
   duration_seconds: number | null;
   channel_names: string[];
+  all_channel_names: string[];
+  units: string[];
   waveforms: Record<string, number[]>;
   grid: {
     paper_speed_mm_per_sec: number;
@@ -143,6 +167,12 @@ export interface WaveformData {
     large_box_mv: number;
   };
   recommended_display_seconds: number;
+  segments: {
+    before: WaveformSegment;
+    anomaly: WaveformSegment;
+    after: WaveformSegment;
+  };
+  filtered: boolean;
 }
 
 // AIAnalysisResult

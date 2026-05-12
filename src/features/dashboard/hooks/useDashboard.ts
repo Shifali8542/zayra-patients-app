@@ -211,7 +211,7 @@ export function useDashboard() {
       return waveformCache.current[recordId];
     }
     try {
-      const data = await api.patient.getWaveform({ recordId, channels: 'ii', downsample: 4 });
+       const data = await api.patient.getWaveform({ recordId, downsample: 4 });
       waveformCache.current[recordId] = data;
       return data;
     } catch {

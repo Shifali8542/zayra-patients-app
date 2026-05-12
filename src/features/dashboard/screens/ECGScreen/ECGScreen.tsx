@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, Pattern, Path, Rect } from 'react-native-svg';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { ECGChart } from '../../../../components/ui/ECGChart';
 import { ecgStyles as styles } from './ECGScreen.style';
 import type {
-  PatientMe, WaveformData, HeartReport,
+  PatientMe, WaveformData, HeartReport, WaveformSegment,
 } from '../../../../types';
-
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
 type SubScreen = 'records' | 'waveform' | 'report';
@@ -148,15 +147,30 @@ function WaveformSubScreen({
 }) {
   const [waveform, setWaveform] = useState<WaveformData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [activeLead, setActiveLead] = useState<string>('II');
+  const [activeSegment, setActiveSegment] = useState<'before' | 'anomaly' | 'after'>('anomaly');
 
   useEffect(() => {
     if (!selectedRecordId) return;
     setLoading(true);
     getWaveform(selectedRecordId).then(data => {
       setWaveform(data);
+      if (data?.all_channel_names?.length) {
+        const preferred = data.all_channel_names.find(n => n.toUpperCase() === 'II');
+        setActiveLead(preferred ?? data.all_channel_names[0]);
+      }
+      setActiveSegment('anomaly');
       setLoading(false);
     });
   }, [selectedRecordId]);
+
+  // Resolve what samples to render: segment samples → full lead → null (fake)
+  const chartSamples: number[] | null = (() => {
+    if (!waveform) return null;
+    const seg = waveform.segments?.[activeSegment];
+    if (seg?.samples?.length) return seg.samples;
+    return waveform.waveforms?.[activeLead] ?? null;
+  })();
 
   const records = patientMe?.ecg_records ?? [];
 
@@ -194,7 +208,7 @@ function WaveformSubScreen({
       <View style={[styles.waveformCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.cardBorder, ...theme.shadow.card }]}>
         <View style={styles.waveformHeader}>
           <Text style={[styles.waveformTitle, { color: theme.colors.textPrimary, fontFamily: theme.fonts.sansSemiBold, fontSize: theme.fontSize.sm }]}>
-            {waveform ? `Lead II — ${waveform.record_name}` : 'ECG Waveform'}
+            {waveform ? `Lead ${activeLead} — ${waveform.record_name}` : 'ECG Waveform'}
           </Text>
           {waveform && (
             <View style={[styles.hrBadge, { backgroundColor: theme.colors.tealAlpha10 }]}>
@@ -213,16 +227,114 @@ function WaveformSubScreen({
             </Text>
           </View>
         ) : (
-          <View style={styles.waveformChartWrap}>
-            {/* ECGChart renders the animated waveform — real data feeds it when available */}
-            <ECGChart height={80} />
-          </View>
+          <>
+            {/* Before / During / After tabs */}
+            <View style={styles.segmentTabs}>
+              {(['before', 'anomaly', 'after'] as const).map(seg => {
+                const LABELS = { before: 'Before', anomaly: 'During', after: 'After' };
+                const isActive = activeSegment === seg;
+                const hasData = (waveform?.segments?.[seg]?.samples?.length ?? 0) > 0;
+                return (
+                  <TouchableOpacity
+                    key={seg}
+                    style={[styles.segmentTab, {
+                      backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceAlt,
+                      opacity: hasData ? 1 : 0.35,
+                    }]}
+                    onPress={() => { if (hasData) setActiveSegment(seg); }}
+                    activeOpacity={0.8}
+                    disabled={!hasData}
+                  >
+                    <Text style={[styles.segmentTabText, {
+                      color: isActive ? '#FFFFFF' : theme.colors.textTertiary,
+                      fontFamily: isActive ? theme.fonts.sansSemiBold : theme.fonts.sansRegular,
+                      fontSize: theme.fontSize.xxs,
+                    }]}>
+                      {LABELS[seg]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* ECG chart with real ECG paper grid */}
+            <View style={[styles.waveformChartWrap, { backgroundColor: '#FFF5F5' }]}>
+              <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                <Svg width="100%" height="100%">
+                  <Defs>
+                    <Pattern id="small" width="8" height="8" patternUnits="userSpaceOnUse">
+                      <Path d="M 8 0 L 0 0 0 8" fill="none" stroke="#FFCCCC" strokeWidth="0.5" />
+                    </Pattern>
+                    <Pattern id="large" width="40" height="40" patternUnits="userSpaceOnUse">
+                      <Rect width="40" height="40" fill="url(#small)" />
+                      <Path d="M 40 0 L 0 0 0 40" fill="none" stroke="#FF9999" strokeWidth="0.8" />
+                    </Pattern>
+                  </Defs>
+                  <Rect width="100%" height="100%" fill="url(#large)" />
+                </Svg>
+              </View>
+              <ECGChart height={110} samples={chartSamples} />
+            </View>
+
+            {/* Segment time range */}
+            {waveform?.segments?.[activeSegment] && (
+              <Text style={[styles.segmentTimeLabel, {
+                color: theme.colors.textTertiary,
+                fontFamily: theme.fonts.sansRegular,
+                fontSize: theme.fontSize.xxs,
+              }]}>
+                {waveform.segments[activeSegment].start_sec}s – {waveform.segments[activeSegment].end_sec}s
+              </Text>
+            )}
+          </>
         )}
 
         {waveform && (
-          <Text style={[styles.waveformMeta, { color: theme.colors.textTertiary, fontFamily: theme.fonts.sansRegular, fontSize: theme.fontSize.xs, marginTop: 8 }]}>
-            {waveform.duration_seconds != null ? `${Math.round(waveform.duration_seconds)}s` : '—'} · {waveform.channel_names.length} leads · {waveform.effective_sampling_rate} Hz effective
-          </Text>
+          <>
+            <Text style={[styles.waveformMeta, { color: theme.colors.textTertiary, fontFamily: theme.fonts.sansRegular, fontSize: theme.fontSize.xs, marginTop: 8 }]}>
+              {waveform.duration_seconds != null ? `${Math.round(waveform.duration_seconds)}s` : '—'}
+              {' · '}{waveform.all_channel_names?.length ?? waveform.channel_names.length} leads
+              {' · '}{waveform.effective_sampling_rate} Hz
+              {waveform.filtered ? '  ✓ Filtered' : ''}
+            </Text>
+
+            {/* Lead switcher */}
+            {(waveform.all_channel_names?.length ?? 0) > 1 && (
+              <View style={styles.leadSwitcherWrap}>
+                <Text style={[styles.leadSwitcherLabel, {
+                  color: theme.colors.textTertiary,
+                  fontFamily: theme.fonts.sansSemiBold,
+                  fontSize: theme.fontSize.xxs,
+                }]}>
+                  LEADS
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.leadSwitcher}>
+                  {waveform.all_channel_names.map(lead => {
+                    const isActive = lead === activeLead;
+                    return (
+                      <TouchableOpacity
+                        key={lead}
+                        style={[styles.leadBtn, {
+                          backgroundColor: isActive ? theme.colors.primary : theme.colors.surfaceAlt,
+                          borderColor: isActive ? theme.colors.primary : theme.colors.divider,
+                        }]}
+                        onPress={() => setActiveLead(lead)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.leadBtnText, {
+                          color: isActive ? '#FFFFFF' : theme.colors.textSecondary,
+                          fontFamily: isActive ? theme.fonts.sansSemiBold : theme.fonts.sansRegular,
+                          fontSize: theme.fontSize.xxs,
+                        }]}>
+                          {lead}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+          </>
         )}
       </View>
 

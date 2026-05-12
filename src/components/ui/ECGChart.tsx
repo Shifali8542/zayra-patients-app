@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 interface ECGChartProps {
   height?: number;
+  samples?: number[] | null;
 }
 
 // Generate ECG-like path points
@@ -34,7 +35,7 @@ function generateECGPoints(width: number, height: number): string {
   return points.join(' ');
 }
 
-export function ECGChart({ height = 56 }: ECGChartProps) {
+export function ECGChart({ height = 56, samples = null }: ECGChartProps) {
   const { theme } = useTheme();
   const opacity = useRef(new Animated.Value(0.6)).current;
 
@@ -58,17 +59,38 @@ export function ECGChart({ height = 56 }: ECGChartProps) {
   }, [opacity]);
 
   const width = 320;
-  const points = generateECGPoints(width, height);
+
+  // Build SVG polyline string from real samples
+  // Downsample to max 600 points so SVG stays performant
+  const realPoints: string | null = (() => {
+    if (!samples || samples.length < 2) return null;
+    const step = Math.max(1, Math.floor(samples.length / 600));
+    const pts = samples.filter((_, i) => i % step === 0);
+    const min = Math.min(...pts);
+    const max = Math.max(...pts);
+    const range = max - min || 1;
+    const mid = height / 2;
+    return pts
+      .map((v, i) => {
+        const x = (i / (pts.length - 1)) * width;
+        const y = mid - ((v - min) / range) * (height - 10) + 5;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  })();
+
+  const fallbackPoints = generateECGPoints(width, height);
+  const isReal = realPoints !== null;
 
   return (
     <View style={[styles.container, { height }]}>
-      <Animated.View style={{ opacity }}>
+      <Animated.View style={{ opacity: isReal ? 1 : opacity }}>
         <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
           <Polyline
-            points={points}
+            points={isReal ? realPoints! : fallbackPoints}
             fill="none"
             stroke={theme.colors.primary}
-            strokeWidth="2"
+            strokeWidth={isReal ? 1.5 : 2}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
