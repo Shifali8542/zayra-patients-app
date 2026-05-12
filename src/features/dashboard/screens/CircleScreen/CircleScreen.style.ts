@@ -23,10 +23,12 @@ export const circleStyles = StyleSheet.create({
   journeyTitle: {},
   journeySubtitle: { marginTop: 2 },
   journeyEmoji: { fontSize: 24 },
-  expertCard: { borderRadius: 20, padding: 16, borderWidth: 1 },
-  expertRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  expertAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  expertAvatarText: { fontWeight: '700' },
-  expertName: {},
-  expertSub: {},
+  // Care Team card (replaces hardcoded Expert Rooms / Dr. Mehta)
+  careTeamCard: { borderRadius: 20, padding: 16, borderWidth: 1 },
+  careTeamRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  careTeamAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  careTeamAvatarText: { fontWeight: '700' },
+  careTeamName: {},
+  careTeamSub: {},
+  careTeamEmpty: { textAlign: 'center', paddingVertical: 8 },
 });

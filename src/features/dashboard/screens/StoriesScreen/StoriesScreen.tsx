@@ -13,7 +13,11 @@ export function StoriesScreen({ stories }: StoriesScreenProps) {
   const { theme } = useTheme();
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <Text style={[styles.headerLabel, { color: theme.colors.textTertiary, fontFamily: theme.fonts.sansSemiBold, fontSize: theme.fontSize.xs }]}>
           Real Stories. Real Outcomes.
@@ -58,15 +62,7 @@ export function StoriesScreen({ stories }: StoriesScreenProps) {
         return (
           <View
             key={story.id}
-            style={[
-              styles.storyCard,
-              {
-                backgroundColor: theme.colors.card,
-                borderWidth: 1,
-                borderColor: theme.colors.cardBorder,
-                ...theme.shadow.card,
-              },
-            ]}
+            style={[styles.storyCard, { backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.cardBorder, ...theme.shadow.card }]}
           >
             <Text style={styles.quoteIcon}>❝</Text>
             <Text style={[styles.storyType, { color: theme.colors.textTertiary, fontFamily: theme.fonts.sansSemiBold, fontSize: theme.fontSize.xxs }]}>

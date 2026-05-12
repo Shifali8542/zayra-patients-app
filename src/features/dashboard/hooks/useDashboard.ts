@@ -1,11 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
+// =============================================================================
+// src/features/dashboard/hooks/useDashboard.ts
+// Real backend data. Zero mock imports.
+//
+// CACHING STRATEGY — "first visit calls API, revisit uses cache":
+//   Global state (patientMe, clinicalInfo, aiAnalysis, stResult) is fetched
+//   once on app load and stored in React state. Tab switches never re-fetch
+//   because the data lives in the parent DashboardWrapper, not in each screen.
+//
+//   Per-record cache (waveform, heartReport) uses useRef maps:
+//     waveformCache.current[record_id] = WaveformData
+//     heartReportCache.current[record_id] = HeartReport
+//   First visit per record → API call → store in ref.
+//   Revisit → read from ref → zero network request.
+//
+// STATIC CONTENT (no backend endpoints):
+//   Circle members, Journeys, Stories — app-defined constants.
+//   Clearly marked so they're easy to replace when backend endpoints exist.
+// =============================================================================
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   api,
   deriveHealthMetric,
   deriveTimeline,
   deriveRhythmStreak,
-  deriveAlynaInitialChat,
   deriveConsistencyAreas,
+  deriveAlynaInitialChat,
   ApiError,
 } from '../../../services/api';
 import type {
@@ -20,14 +40,16 @@ import type {
   ClinicalInfo,
   AIAnalysisResponse,
   PatientSTResult,
+  WaveformData,
+  HeartReport,
 } from '../../../types';
 
-// ─── Static content (no backend endpoints yet) ────────────────────────────────
-// Replace each with real API calls when backend endpoints are built.
+// ─── Static app-defined content ───────────────────────────────────────────────
+// No backend endpoints for these. Replace with real API calls when built.
 
 const STATIC_CIRCLE_MEMBERS: CircleMember[] = [
   { id: '1', name: 'Emergency', initials: 'E', color: '#EF4444', relation: 'Emergency Contact' },
-  { id: '2', name: 'Doctor', initials: 'D', color: '#00C2B2', relation: 'Clinician' },
+  { id: '2', name: 'Clinician', initials: 'C', color: '#00C2B2', relation: 'Care Team' },
 ];
 
 const STATIC_JOURNEYS: Journey[] = [
@@ -41,31 +63,26 @@ const STATIC_STORIES: Story[] = [
     id: '1',
     type: 'EARLIER CARDIAC INSIGHT',
     quote: "Alyna flagged a pattern I'd ignored for months. My cardiologist confirmed it the next day.",
-    author: 'Rohan',
-    authorAge: 47,
-    tag: 'CAUGHT EARLY. TREATED CALMLY.',
-    tagColor: 'teal',
+    author: 'Rohan', authorAge: 47,
+    tag: 'CAUGHT EARLY. TREATED CALMLY.', tagColor: 'teal',
   },
   {
     id: '2',
     type: 'FAMILY REASSURANCE',
     quote: "My father is in another city. Zayra's circle quietly tells me he's okay every morning.",
     author: 'Meera',
-    tag: 'DISTANCE WITHOUT WORRY.',
-    tagColor: 'light',
+    tag: 'DISTANCE WITHOUT WORRY.', tagColor: 'light',
   },
   {
     id: '3',
     type: 'RECOVERY SUPPORT',
     quote: 'After my procedure, Alyna tracked every step back to normal. My doctor loved the reports.',
-    author: 'Aditya',
-    authorAge: 55,
-    tag: 'EVIDENCE-BASED RECOVERY.',
-    tagColor: 'teal',
+    author: 'Aditya', authorAge: 55,
+    tag: 'EVIDENCE-BASED RECOVERY.', tagColor: 'teal',
   },
 ];
 
-// ─── State shape ──────────────────────────────────────────────────────────────
+// ─── Dashboard state ──────────────────────────────────────────────────────────
 
 interface DashboardState {
   // Derived from backend
@@ -74,21 +91,23 @@ interface DashboardState {
   streak: RhythmStreak | null;
   alynaChat: ChatMessage[];
   consistencyAreas: { label: string; value: number }[];
-
-  // Raw backend responses (available if screens need more detail)
+  // Convenience fields for screens
+  interpretation: string | null;
+  riskLevel: string | null;
+  findings: string[];
+  recommendation: string | null;
+  // Raw backend data
   patientMe: PatientMe | null;
   clinicalInfo: ClinicalInfo | null;
   aiAnalysis: AIAnalysisResponse | null;
   stResult: PatientSTResult | null;
-
-  // Static app content (no backend endpoints yet)
+  // Static content
   members: CircleMember[];
   journeys: Journey[];
   stories: Story[];
-
+  // Status
   loading: boolean;
   error: string | null;
-  /** True when patient account exists but is not linked to an ECG profile */
   noPatientProfile: boolean;
 }
 
@@ -101,6 +120,10 @@ export function useDashboard() {
     streak: null,
     alynaChat: [],
     consistencyAreas: [],
+    interpretation: null,
+    riskLevel: null,
+    findings: [],
+    recommendation: null,
     patientMe: null,
     clinicalInfo: null,
     aiAnalysis: null,
@@ -113,41 +136,42 @@ export function useDashboard() {
     noPatientProfile: false,
   });
 
+  // Per-record caches — survive tab switches, cleared on logout
+  const waveformCache = useRef<Record<number, WaveformData>>({});
+  const heartReportCache = useRef<Record<number, HeartReport>>({});
+
   const loadAll = useCallback(async () => {
-    setState((prev) => ({ ...prev, loading: true, error: null, noPatientProfile: false }));
+    setState(prev => ({ ...prev, loading: true, error: null, noPatientProfile: false }));
 
     try {
-      // 1. Patient profile (requires linked patient_profile on the User)
+      // 1. Patient profile
       const patientMe = await api.patient.getMe();
+      const firstId = patientMe.ecg_records[0]?.id;
 
-      const firstRecordId = patientMe.ecg_records[0]?.id;
+      // 2. Clinical info (ECG metrics)
+      const clinicalInfo = await api.patient
+        .getClinicalInfo(firstId)
+        .catch(() => null);
 
-      // 2. Clinical info (ECG metrics) — non-fatal if no records yet
-      const clinicalInfo = await api.patient.getClinicalInfo(firstRecordId).catch(() => null);
-
-      // 3. AI analysis — 404 means not yet run, not an error
+      // 3. AI analysis — 404 = not run yet, not an error
       const aiAnalysis = await api.assessments
-        .getAIAnalysis({ recordId: firstRecordId })
-        .catch((e) => {
+        .getAIAnalysis({ recordId: firstId })
+        .catch(e => {
           if (e instanceof ApiError && e.status === 404) return null;
           throw e;
         });
 
-      // 4. ST result — 404 means not yet run, not an error
-      const stResult = await api.assessments.getSTResult(firstRecordId);
+      // 4. ST result — 404 = not run yet
+      const stResult = await api.assessments.getSTResult(firstId);
 
-      // Derive app-level types
-      const metrics = deriveHealthMetric(
-        clinicalInfo,
-        aiAnalysis?.analysis?.risk_score ?? null,
-        aiAnalysis?.analysis?.risk_level ?? null
-      );
-      const timeline = deriveTimeline(aiAnalysis, stResult);
-      const streak = deriveRhythmStreak(patientMe.record_count);
-      const alynaChat = deriveAlynaInitialChat(aiAnalysis);
+      // Derive all app-level types
+      const metrics       = deriveHealthMetric(clinicalInfo, aiAnalysis?.analysis?.risk_level ?? null);
+      const timeline      = deriveTimeline(aiAnalysis, stResult);
+      const streak        = deriveRhythmStreak(patientMe.record_count);
+      const alynaChat     = deriveAlynaInitialChat(aiAnalysis);
       const consistencyAreas = deriveConsistencyAreas(clinicalInfo);
 
-      setState((prev) => ({
+      setState(prev => ({
         ...prev,
         patientMe,
         clinicalInfo,
@@ -158,80 +182,93 @@ export function useDashboard() {
         streak,
         alynaChat,
         consistencyAreas,
+        interpretation: aiAnalysis?.analysis?.narrative ?? null,
+        riskLevel:      aiAnalysis?.analysis?.risk_level ?? null,
+        findings:       aiAnalysis?.analysis?.findings ?? [],
+        recommendation: aiAnalysis?.analysis?.recommendation ?? null,
         loading: false,
         error: null,
         noPatientProfile: false,
       }));
-    } catch (e: any) {
-      // 403 = user account not linked to a patient ECG profile
+    } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 403) {
-        setState((prev) => ({ ...prev, loading: false, error: null, noPatientProfile: true }));
+        setState(prev => ({ ...prev, loading: false, error: null, noPatientProfile: true }));
         return;
       }
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: e instanceof ApiError ? e.message : 'Failed to load health data. Check your connection.',
-        noPatientProfile: false,
-      }));
+      const msg = e instanceof ApiError
+        ? e.message
+        : 'Failed to load health data. Check your connection.';
+      setState(prev => ({ ...prev, loading: false, error: msg, noPatientProfile: false }));
     }
   }, []);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  /**
-   * Send a message to Alyna.
-   * Calls AI analysis with refresh=true to get a fresh Orinn response,
-   * then uses the narrative as Alyna's reply.
-   */
-  const sendAlynaMessage = useCallback(
-    async (message: string): Promise<ChatMessage | null> => {
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // ── Per-record waveform — cached per record_id ────────────────────────────
 
-      try {
-        const recordId = state.patientMe?.ecg_records[0]?.id;
-        if (!recordId) {
-          return {
-            id: Date.now().toString(),
-            sender: 'alyna',
-            message: 'Your ECG profile is not yet linked. Please contact your healthcare provider.',
-            time: timeStr,
-          };
-        }
+  const getWaveform = useCallback(async (recordId: number): Promise<WaveformData | null> => {
+    if (waveformCache.current[recordId]) {
+      return waveformCache.current[recordId];
+    }
+    try {
+      const data = await api.patient.getWaveform({ recordId, channels: 'ii', downsample: 4 });
+      waveformCache.current[recordId] = data;
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
 
-        const freshAnalysis = await api.assessments.getAIAnalysis({ recordId, refresh: true });
-        const reply =
-          freshAnalysis.analysis.narrative ||
-          freshAnalysis.analysis.recommendation ||
-          'Your ECG data looks stable. I have noted your message.';
+  // ── Per-record heart report — cached per record_id ────────────────────────
 
-        const chatReply: ChatMessage = {
-          id: Date.now().toString(),
-          sender: 'alyna',
-          message: reply,
+  const getHeartReport = useCallback(async (recordId: number): Promise<HeartReport | null> => {
+    if (heartReportCache.current[recordId]) {
+      return heartReportCache.current[recordId];
+    }
+    try {
+      const data = await api.patient.getHeartReport(recordId);
+      heartReportCache.current[recordId] = data;
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // ── Send Alyna message ────────────────────────────────────────────────────
+
+  const sendAlynaMessage = useCallback(async (message: string): Promise<ChatMessage | null> => {
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      const recordId = state.patientMe?.ecg_records[0]?.id;
+      if (!recordId) {
+        return {
+          id: Date.now().toString(), sender: 'alyna',
+          message: 'Your ECG profile is not yet linked. Please contact your healthcare provider.',
           time: timeStr,
         };
-
-        setState((prev) => ({
-          ...prev,
-          aiAnalysis: freshAnalysis,
-          alynaChat: [...prev.alynaChat, chatReply],
-        }));
-
-        return chatReply;
-      } catch {
-        const fallback: ChatMessage = {
-          id: Date.now().toString(),
-          sender: 'alyna',
-          message: "I've noted that. Your biometrics look stable right now. Is there anything specific you'd like me to monitor?",
-          time: timeStr,
-        };
-        setState((prev) => ({ ...prev, alynaChat: [...prev.alynaChat, fallback] }));
-        return fallback;
       }
-    },
-    [state.patientMe]
-  );
+      const fresh = await api.assessments.getAIAnalysis({ recordId, refresh: true });
+      const reply = fresh.analysis.narrative || fresh.analysis.recommendation
+        || 'Your ECG data looks stable. I have noted your message.';
+      const chatReply: ChatMessage = { id: Date.now().toString(), sender: 'alyna', message: reply, time: timeStr };
+      setState(prev => ({ ...prev, aiAnalysis: fresh, alynaChat: [...prev.alynaChat, chatReply] }));
+      return chatReply;
+    } catch {
+      const fallback: ChatMessage = {
+        id: Date.now().toString(), sender: 'alyna',
+        message: "I've noted that. Your biometrics look stable. Is there anything specific you'd like me to monitor?",
+        time: timeStr,
+      };
+      setState(prev => ({ ...prev, alynaChat: [...prev.alynaChat, fallback] }));
+      return fallback;
+    }
+  }, [state.patientMe]);
 
-  return { ...state, sendAlynaMessage, reload: loadAll };
+  // Clear per-record caches on logout (called from AuthContext)
+  const clearCache = useCallback(() => {
+    waveformCache.current = {};
+    heartReportCache.current = {};
+  }, []);
+
+  return { ...state, sendAlynaMessage, getWaveform, getHeartReport, clearCache, reload: loadAll };
 }

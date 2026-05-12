@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { User, AuthTokens } from '../types';
 import { api, setTokens, setRefreshFailedCallback } from '../services/api';
 
@@ -23,8 +23,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Force-logout when refresh token expires
-  React.useEffect(() => {
+  // Register forced-logout callback for expired refresh tokens
+  useEffect(() => {
     setRefreshFailedCallback(() => {
       setUser(null);
       setTokensState(null);
@@ -39,12 +39,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const { user: loggedInUser, tokens: newTokens } = await api.auth.login(email, password);
-      setUser(loggedInUser);
-      setTokensState(newTokens);
+      const { user: u, tokens: t } = await api.auth.login(email, password);
+      setUser(u);
+      setTokensState(t);
       setIsAuthenticated(true);
-    } catch (e: any) {
-      setError(e?.message ?? 'Login failed. Please check your credentials.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Login failed. Please check your credentials.';
+      setError(msg);
       throw e;
     } finally {
       setLoading(false);
@@ -55,12 +56,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const { user: newUser, tokens: newTokens } = await api.auth.register(name, email, password);
-      setUser(newUser);
-      setTokensState(newTokens);
+      const { user: u, tokens: t } = await api.auth.register(name, email, password);
+      setUser(u);
+      setTokensState(t);
       setIsAuthenticated(true);
-    } catch (e: any) {
-      setError(e?.message ?? 'Registration failed. Please try again.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Registration failed. Please try again.';
+      setError(msg);
       throw e;
     } finally {
       setLoading(false);
@@ -82,7 +84,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, tokens, isAuthenticated, login, signup, logout, loading, error, clearError }}
+      value={{
+        user,
+        tokens,
+        isAuthenticated,
+        login,
+        signup,
+        logout,
+        loading,
+        error,
+        clearError,
+      }}
     >
       {children}
     </AuthContext.Provider>

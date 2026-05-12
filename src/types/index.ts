@@ -1,71 +1,12 @@
-// ─── Auth & User (matches backend: UserProfileSerializer) ────────────────────
-
-export interface User {
-  id: number;                   // backend returns integer
-  email: string;
-  first_name: string;
-  last_name: string;
-  phone: string | null;
-  role: 'admin' | 'doctor' | 'nurse' | 'patient';
-  created_at: string;
-  specialization: string | null;
-  license_number: string | null;
-  hospital_name: string | null;
-  years_of_experience: number | null;
-  qualification: string | null;
-  is_doctor: boolean;
-  is_patient: boolean;
-
-  // ── App-level fields (not from backend) ──────────────────────────────────
-  name: string;                 // derived: `${first_name} ${last_name}`.trim()
-  journey: 'wellness' | 'care' | 'evac' | 'hospital';
-  preferences: UserPreferences;
-  baseline: UserBaseline | null;
-}
-
-export interface UserBaseline {
-  hrv: number | null;
-  restingHr: number | null;
-  stressSignature: string;
-  lifestyle: string;
-  sleepPattern: string;
-  stressLevel: string;
-  activity: string;
-}
-
-export interface UserPreferences {
-  theme: 'light' | 'dark';
-  notifications: boolean;
-  shareWithCircle: boolean;
-}
+// Auth tokens 
 
 export interface AuthTokens {
   access: string;
   refresh: string;
 }
 
-// ─── Backend Auth Response Shapes ─────────────────────────────────────────────
+// Backend raw user 
 
-/** POST /api/v1/auth/login/ */
-export interface LoginResponse {
-  message: string;
-  user: BackendUser;
-  access: string;
-  refresh: string;
-}
-
-/** POST /api/v1/auth/register/user/ */
-export interface RegisterResponse {
-  message: string;
-  user: BackendUser;
-  access: string;
-  refresh: string;
-}
-
-/**
- * Raw backend user — exactly as returned by UserProfileSerializer.
- * Mapped to the richer `User` type via mapBackendUser() in api.ts.
- */
 export interface BackendUser {
   id: number;
   email: string;
@@ -81,26 +22,40 @@ export interface BackendUser {
   qualification: string | null;
   is_doctor: boolean;
   is_patient: boolean;
-  patient_count?: number;
-  ecg_record_count?: number;
 }
 
-// ─── Patient / ECG (apps/patients/serializers.py) ────────────────────────────
+// App-level User 
 
-/** PatientMeSerializer — GET /api/v1/patients/me/ */
-export interface PatientMe {
-  id: number;
-  patient_code: string;
-  age: number | null;
-  sex: string | null;
-  diagnosis: string | null;
-  extra_info: Record<string, any>;
-  ecg_records: ECGRecord[];
-  record_count: number;
-  diagnoses: string[];
+export interface User extends BackendUser {
+  name: string;  
+  journey: 'wellness' | 'care' | 'evac' | 'hospital';
+  preferences: UserPreferences;
 }
 
-/** ECGRecordSerializer */
+export interface UserPreferences {
+  theme: 'light' | 'dark';
+  notifications: boolean;
+  shareWithCircle: boolean;
+}
+
+// ─── Login / Register responses
+
+export interface LoginResponse {
+  message: string;
+  user: BackendUser;
+  access: string;
+  refresh: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user: BackendUser;
+  access: string;
+  refresh: string;
+}
+
+// ECGRecord
+
 export interface ECGRecord {
   id: number;
   record_name: string;
@@ -113,27 +68,24 @@ export interface ECGRecord {
   split: 'train' | 'validation' | 'test' | null;
 }
 
-/** GET /api/v1/patients/me/clinical-info/ */
-export interface ClinicalInfo {
+// PatientMe
+
+export interface PatientMe {
+  id: number;
   patient_code: string;
-  record_name: string;
-  demographics: {
-    age: number | null;
-    sex: string | null;
-    diagnosis: string | null;
-  };
-  clinical_summary: Record<string, any>;
-  ecg_analysis: ECGAnalysis;
-  record_info: {
-    sampling_rate: number | null;
-    num_channels: number | null;
-    duration_seconds: number | null;
-    channel_names: string[];
-  };
+  age: number | null;
+  sex: string | null;
+  diagnosis: string | null;
+  extra_info: Record<string, unknown>;
+  ecg_records: ECGRecord[];
+  record_count: number;
   diagnoses: string[];
+  dataset_source: string | null;
+  dataset_source_display: string | null;
 }
 
-/** ECG analysis metrics — from ecg_analyzer.py (NeuroKit2) */
+// ECGAnalysis
+
 export interface ECGAnalysis {
   heart_rate_bpm: number | null;
   heart_rate_min: number | null;
@@ -145,11 +97,31 @@ export interface ECGAnalysis {
   qrs_width_ms: number | null;
   qt_ms: number | null;
   qtc_ms: number | null;
-  source?: 'cache' | 'live';
+  source?: 'cache' | 'live' | 'error';
   error?: string;
 }
 
-/** GET /api/v1/patients/me/waveform/ */
+// ─── ClinicalInfo 
+export interface ClinicalInfo {
+  patient_code: string;
+  record_name: string;
+  demographics: {
+    age: number | null;
+    sex: string | null;
+    diagnosis: string | null;
+  };
+  clinical_summary: Record<string, unknown>;
+  ecg_analysis: ECGAnalysis;
+  record_info: {
+    sampling_rate: number | null;
+    num_channels: number | null;
+    duration_seconds: number | null;
+    channel_names: string[];
+  };
+  diagnoses: string[];
+}
+
+// WaveformData
 export interface WaveformData {
   patient_code: string;
   record_name: string;
@@ -162,22 +134,18 @@ export interface WaveformData {
   duration_seconds: number | null;
   channel_names: string[];
   waveforms: Record<string, number[]>;
-  grid: ECGGrid;
+  grid: {
+    paper_speed_mm_per_sec: number;
+    amplitude_mm_per_mv: number;
+    small_box_ms: number;
+    large_box_ms: number;
+    small_box_mv: number;
+    large_box_mv: number;
+  };
   recommended_display_seconds: number;
 }
 
-export interface ECGGrid {
-  paper_speed_mm_per_sec: number;
-  amplitude_mm_per_mv: number;
-  small_box_ms: number;
-  large_box_ms: number;
-  small_box_mv: number;
-  large_box_mv: number;
-}
-
-// ─── Cardio Assessments (apps/cardio_assessments/serializers.py) ─────────────
-
-/** GET /api/v1/assessments/me/ai-analysis/ */
+// AIAnalysisResult
 export interface AIAnalysisResult {
   id: number;
   risk_level: 'Low' | 'Moderate' | 'High' | 'Critical' | null;
@@ -189,12 +157,13 @@ export interface AIAnalysisResult {
   created_at: string;
 }
 
+// AIAnalysisResponse
 export interface AIAnalysisResponse {
   source: 'cache' | 'orinn';
   analysis: AIAnalysisResult;
 }
 
-/** GET /api/v1/assessments/st-elevation/me/ — patient-friendly shape */
+// PatientSTResult
 export interface PatientSTResult {
   your_result: string;
   what_this_means: string;
@@ -203,29 +172,52 @@ export interface PatientSTResult {
   last_checked: string;
 }
 
-// ─── Derived / App-Only types ─────────────────────────────────────────────────
+// HeartReport 
+export interface HeartReport {
+  patient_code: string;
+  record_id: number;
+  record_name: string;
+  record_label: string;
+  record_index: number;
+  total_records: number;
+  dataset_source: string;
+  dataset_source_display: string;
+  demographics: {
+    age: number | null;
+    sex: string | null;
+    diagnosis: string | null;
+  };
+  diagnoses: string[];
+  ecg_metrics: ECGAnalysis | null;
+  metrics_source: 'cache' | 'live' | 'error' | 'none';
+  ai_analysis: AIAnalysisResult | null;
+  st_result: HeartReportSTResult | null;
+  metrics_available: boolean;
+  ai_available: boolean;
+  st_available: boolean;
+}
 
-/**
- * HealthMetric — assembled in useDashboard from real backend data:
- *   avgHr        ← clinical_info.ecg_analysis.heart_rate_bpm
- *   hrv_ms       ← clinical_info.ecg_analysis.hrv_ms
- *   rhythm       ← clinical_info.ecg_analysis.rhythm
- *   signalStrength ← clinical_info.ecg_analysis.quality_score × 100
- *   anomalies    ← ai_analysis.risk_score (proxy)
- *   spo2         ← null (wearable-only, not in backend)
- *   status       ← derived from risk_level / rhythm
- */
+// ST result shape inside heart-report 
+export interface HeartReportSTResult {
+  overall_status: string;
+  overall_status_note: string;
+  stemi_suspected: boolean;
+  affected_region: string;
+  emergency_alert: boolean;
+  confidence_score: number;
+  last_checked: string;
+}
+
+// Derived app-only types
 export interface HealthMetric {
   avgHr: number | null;
-  spo2: number | null;
-  anomalies: number | null;
+  hrv_ms: number | null;
+  qrs_width_ms: number | null;
   signalStrength: number | null;
   status: 'normal' | 'warning' | 'alert';
   rhythm: string | null;
-  hrv_ms: number | null;
 }
 
-/** TimelineEvent — synthesized from AI findings + ST alert */
 export type TimelineEventType = 'observation' | 'confirmation' | 'alert' | 'insight';
 export type TimelineSource = 'axiom' | 'zen' | 'alyna' | 'clinician';
 
@@ -238,7 +230,6 @@ export interface TimelineEvent {
   source: TimelineSource;
 }
 
-/** RhythmStreak — derived from patient's ECG record_count */
 export interface RhythmStreak {
   days: number;
   milestones: Milestone[];
@@ -252,7 +243,6 @@ export interface Milestone {
   active: boolean;
 }
 
-/** ChatMessage — local state only; history not stored on backend */
 export interface ChatMessage {
   id: string;
   sender: 'user' | 'alyna';
@@ -260,10 +250,8 @@ export interface ChatMessage {
   time: string;
 }
 
-/**
- * Circle / Journey / Story — no backend endpoints in this version.
- * Static app-defined content in useDashboard.ts.
- */
+// App-defined static content
+
 export interface CircleMember {
   id: string;
   name: string;
@@ -277,10 +265,9 @@ export interface Journey {
   id: string;
   title: string;
   subtitle: string;
-  description?: string;
+  emoji?: string;
   participants?: number;
   curator?: string;
-  emoji?: string;
 }
 
 export interface Story {
@@ -293,7 +280,7 @@ export interface Story {
   tagColor: string;
 }
 
-// ─── Navigation ───────────────────────────────────────────────────────────────
+// Navigation
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -305,17 +292,13 @@ export type AuthStackParamList = {
   Signup: undefined;
 };
 
+// Tab order: Home | ECG | Alyna | Rhythm | Circle | Stories | Profile
 export type TabParamList = {
   Home: undefined;
+  ECG: undefined;
   Alyna: undefined;
-  Circle: undefined;
   Rhythm: undefined;
+  Circle: undefined;
   Stories: undefined;
   Profile: undefined;
 };
-
-export interface ApiError {
-  detail?: string;
-  message?: string;
-  [key: string]: any;
-}
