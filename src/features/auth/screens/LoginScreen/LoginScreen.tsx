@@ -25,7 +25,7 @@ type Nav = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 export function LoginScreen() {
   const { theme } = useTheme();
-  const { login, skipAuth, loading, error } = useAuth();
+  const { login, loading, error, clearError } = useAuth();
   const navigation = useNavigation<Nav>();
 
   const [email, setEmail] = useState('');
@@ -33,7 +33,8 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    await login(email, password);
+    if (!email.trim() || !password.trim()) return;
+    await login(email.trim().toLowerCase(), password);
   };
 
   return (
@@ -142,7 +143,7 @@ export function LoginScreen() {
                 placeholder="you@example.com"
                 placeholderTextColor={theme.colors.inputPlaceholder}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); clearError(); }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -178,7 +179,7 @@ export function LoginScreen() {
                   placeholder="••••••••"
                   placeholderTextColor={theme.colors.inputPlaceholder}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(v) => { setPassword(v); clearError(); }}
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                 />
@@ -197,7 +198,7 @@ export function LoginScreen() {
               <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
             )}
 
-            {/* Sign In Button */}
+            {/* Sign In */}
             <TouchableOpacity
               style={[styles.submitBtn, { backgroundColor: theme.colors.secondary }]}
               onPress={handleLogin}
@@ -221,28 +222,6 @@ export function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Skip Button */}
-            <TouchableOpacity
-              style={[
-                styles.skipBtn,
-                {
-                  borderColor: 'rgba(255,255,255,0.60)',
-                  backgroundColor: 'rgba(255,255,255,0.40)',
-                },
-              ]}
-              onPress={skipAuth}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.skipText,
-                  { color: theme.colors.textSecondary, fontFamily: theme.fonts.sansMedium },
-                ]}
-              >
-                Skip for now →
-              </Text>
-            </TouchableOpacity>
-
             {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={[styles.divider, { backgroundColor: 'rgba(156,163,175,0.4)' }]} />
@@ -257,7 +236,7 @@ export function LoginScreen() {
               <View style={[styles.divider, { backgroundColor: 'rgba(156,163,175,0.4)' }]} />
             </View>
 
-            {/* Footer nav */}
+            {/* Footer */}
             <View style={styles.footerRow}>
               <Text
                 style={[

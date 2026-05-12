@@ -33,11 +33,6 @@ export const loginStyles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 24,
   },
-  badgeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
   badgeText: {
     letterSpacing: 1.5,
     textTransform: 'uppercase',
@@ -77,6 +72,7 @@ export const loginStyles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     marginTop: 4,
+    marginBottom: 4,
   },
   submitBtn: {
     flexDirection: 'row',
@@ -90,17 +86,6 @@ export const loginStyles = StyleSheet.create({
   },
   submitText: {
     fontSize: 16,
-  },
-  skipBtn: {
-    paddingVertical: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  skipText: {
-    fontSize: 14,
   },
   dividerRow: {
     flexDirection: 'row',
@@ -132,11 +117,5 @@ export const loginStyles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     marginTop: 24,
-  },
-  spinner: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
   },
 });
