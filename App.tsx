@@ -7,7 +7,6 @@ import { useFonts } from 'expo-font';
 import {
   DMSans_400Regular,
   DMSans_500Medium,
-  DMSans_600SemiBold,
   DMSans_700Bold,
 } from '@expo-google-fonts/dm-sans';
 import {
@@ -27,7 +26,6 @@ export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     DMSans_400Regular,
     DMSans_500Medium,
-    DMSans_600SemiBold,
     DMSans_700Bold,
     Sora_400Regular,
     Sora_600SemiBold,

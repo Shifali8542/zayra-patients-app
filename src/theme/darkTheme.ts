@@ -1,10 +1,9 @@
 import { Colors } from './colors';
 import { FontFamily, FontSize } from './fonts';
 import { Spacing, Radius, Shadow } from './spacing';
-import type { Theme } from './lightTheme';
 
-export const darkTheme: Theme = {
-  isDark: true,
+export const darkTheme = {
+  isDark: true as const,
   colors: {
     background: Colors.gradientDarkBg,
     backgroundSolid: Colors.navy,
@@ -60,4 +59,5 @@ export const darkTheme: Theme = {
     navy: Colors.gradientNavy as string[],
     card: ['rgba(27,58,85,0.90)', 'rgba(27,58,85,0.70)'] as string[],
   },
-} as const;
+};
+

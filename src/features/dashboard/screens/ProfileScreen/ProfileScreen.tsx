@@ -8,6 +8,7 @@ interface ProfileScreenProps {
   user: User;
   onLogout: () => void;
   clinicalInfo: ClinicalInfo | null;
+  onOpenSupport: () => void;
 }
 
 const JOURNEYS = ['Wellness', 'Care', 'Evac', 'Hospital'] as const;
@@ -24,10 +25,11 @@ function buildMenuItems(user: User, clinicalInfo: ClinicalInfo | null) {
     { icon: '🛡', iconBg: undefined, iconColor: undefined, label: 'Privacy Center', sub: 'What Zayra sees · what others see' },
     { icon: '👥', iconBg: undefined, iconColor: undefined, label: 'Family & Circle', sub: 'Sharing & emergency awareness' },
     { icon: '📄', iconBg: undefined, iconColor: undefined, label: 'Reports', sub: 'Clinician-ready PDFs' },
+    { icon: '💬', iconBg: undefined, iconColor: undefined, label: 'Help & Support', sub: 'Raise a ticket, chat with us' },
   ];
 }
 
-export function ProfileScreen({ user, onLogout, clinicalInfo }: ProfileScreenProps) {
+export function ProfileScreen({ user, onLogout, clinicalInfo, onOpenSupport }: ProfileScreenProps) {
   const { theme, toggleTheme, isDark } = useTheme();
   const menuItems = buildMenuItems(user, clinicalInfo);
   const initial = user.first_name?.[0] ?? user.email[0].toUpperCase();
@@ -59,7 +61,12 @@ export function ProfileScreen({ user, onLogout, clinicalInfo }: ProfileScreenPro
 
       {/* Menu Items */}
       {menuItems.map((item, i) => (
-        <TouchableOpacity key={i} style={[styles.menuItem, { backgroundColor: theme.colors.card, borderColor: theme.colors.cardBorder, ...theme.shadow.card }]} activeOpacity={0.8}>
+        <TouchableOpacity
+          key={i}
+          onPress={item.label === 'Help & Support' ? onOpenSupport : undefined}
+          style={[styles.menuItem, { backgroundColor: theme.colors.card, borderColor: theme.colors.cardBorder, ...theme.shadow.card }]}
+          activeOpacity={0.8}
+        >
           <View style={[styles.menuIconWrap, { backgroundColor: theme.colors.surfaceAlt }]}>
             {item.iconBg ? (
               <View style={[styles.menuIconInner, { backgroundColor: item.iconBg }]}>

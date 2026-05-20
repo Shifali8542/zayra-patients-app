@@ -7,14 +7,15 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../features/dashboard/hooks/useDashboard';
 
-import { HomeScreen }    from '../../features/dashboard/screens/HomeScreen/HomeScreen';
-import { ECGScreen }     from '../../features/dashboard/screens/ECGScreen/ECGScreen';
-import { AlynaScreen }   from '../../features/dashboard/screens/AlynaScreen/AlynaScreen';
-import { RhythmScreen }  from '../../features/dashboard/screens/RhythmScreen/RhythmScreen';
-import { CircleScreen }  from '../../features/dashboard/screens/CircleScreen/CircleScreen';
+import { HomeScreen } from '../../features/dashboard/screens/HomeScreen/HomeScreen';
+import { ECGScreen } from '../../features/dashboard/screens/ECGScreen/ECGScreen';
+import { AlynaScreen } from '../../features/dashboard/screens/AlynaScreen/AlynaScreen';
+import { RhythmScreen } from '../../features/dashboard/screens/RhythmScreen/RhythmScreen';
+import { CircleScreen } from '../../features/dashboard/screens/CircleScreen/CircleScreen';
 import { StoriesScreen } from '../../features/dashboard/screens/StoriesScreen/StoriesScreen';
 import { ProfileScreen } from '../../features/dashboard/screens/ProfileScreen/ProfileScreen';
-
+import { SupportListScreen } from '../../features/support/screens/SupportListScreen/SupportListScreen';
+import { TicketChatScreen } from '../../features/support/screens/TicketChatScreen/TicketChatScreen';
 import { appNavigatorStyles as styles } from './AppNavigator.style';
 import type { TabParamList } from '../../types';
 
@@ -22,11 +23,11 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 // Tab order: Home | ECG | Alyna | Rhythm | Circle | Stories | Profile
 const TAB_ICONS: Record<string, string> = {
-  Home:    '🏠',
-  ECG:     '❤️',
-  Alyna:   '✨',
-  Rhythm:  '🔥',
-  Circle:  '👥',
+  Home: '🏠',
+  ECG: '❤️',
+  Alyna: '✨',
+  Rhythm: '🔥',
+  Circle: '👥',
   Stories: '📖',
   Profile: '👤',
 };
@@ -114,12 +115,17 @@ function NoProfileScreen({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
-// ─── Dashboard wrapper ────────────────────────────────────────────────────────
+// Dashboard wrapper
 
 function DashboardWrapper() {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
   const dashboard = useDashboard();
+
+  // Support navigation state — drives profile tab sub-screens
+  const [supportView, setSupportView] = React.useState<
+    { screen: 'list' } | { screen: 'chat'; ticketId: number } | null
+  >(null);
 
   if (dashboard.loading) return <LoadingScreen />;
   if (dashboard.error) return <ErrorScreen message={dashboard.error} onRetry={dashboard.reload} />;
@@ -206,11 +212,24 @@ function DashboardWrapper() {
       <Tab.Screen name="Profile">
         {() => wrap(
           user ? (
-            <ProfileScreen
-              user={user}
-              onLogout={logout}
-              clinicalInfo={dashboard.clinicalInfo}
-            />
+            supportView?.screen === 'chat' ? (
+              <TicketChatScreen
+                ticketId={supportView.ticketId}
+                onBack={() => setSupportView({ screen: 'list' })}
+              />
+            ) : supportView?.screen === 'list' ? (
+              <SupportListScreen
+                onOpenTicket={(id) => setSupportView({ screen: 'chat', ticketId: id })}
+                onBack={() => setSupportView(null)}
+              />
+            ) : (
+              <ProfileScreen
+                user={user}
+                onLogout={logout}
+                clinicalInfo={dashboard.clinicalInfo}
+                onOpenSupport={() => setSupportView({ screen: 'list' })}
+              />
+            )
           ) : null
         )}
       </Tab.Screen>

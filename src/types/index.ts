@@ -1,12 +1,10 @@
 // Auth tokens 
-
 export interface AuthTokens {
   access: string;
   refresh: string;
 }
 
 // Backend raw user 
-
 export interface BackendUser {
   id: number;
   email: string;
@@ -25,7 +23,6 @@ export interface BackendUser {
 }
 
 // App-level User 
-
 export interface User extends BackendUser {
   name: string;  
   journey: 'wellness' | 'care' | 'evac' | 'hospital';
@@ -38,7 +35,7 @@ export interface UserPreferences {
   shareWithCircle: boolean;
 }
 
-// ─── Login / Register responses
+// Login / Register responses
 
 export interface LoginResponse {
   message: string;
@@ -55,7 +52,6 @@ export interface RegisterResponse {
 }
 
 // ECGRecord
-
 export interface ECGRecord {
   id: number;
   record_name: string;
@@ -69,7 +65,6 @@ export interface ECGRecord {
 }
 
 // PatientMe
-
 export interface PatientMe {
   id: number;
   patient_code: string;
@@ -85,7 +80,6 @@ export interface PatientMe {
 }
 
 // ECGAnalysis
-
 export interface ECGAnalysis {
   heart_rate_bpm: number | null;
   heart_rate_min: number | null;
@@ -101,7 +95,7 @@ export interface ECGAnalysis {
   error?: string;
 }
 
-// ─── ClinicalInfo 
+// ClinicalInfo 
 export interface ClinicalInfo {
   patient_code: string;
   record_name: string;
@@ -281,7 +275,6 @@ export interface ChatMessage {
 }
 
 // App-defined static content
-
 export interface CircleMember {
   id: string;
   name: string;
@@ -311,7 +304,6 @@ export interface Story {
 }
 
 // Navigation
-
 export type RootStackParamList = {
   Auth: undefined;
   App: undefined;
@@ -332,3 +324,73 @@ export type TabParamList = {
   Stories: undefined;
   Profile: undefined;
 };
+
+// Customer Support
+export type TicketStatus = 'open' | 'in_progress' | 'escalated' | 'resolved' | 'closed';
+export type TicketSeverity = 'critical' | 'urgent' | 'normal' | 'resolved';
+export type TicketCategory =
+| 'device_sync'
+| 'alyna_alert'
+| 'billing'
+| 'onboarding'
+| 'evac_alert'
+| 'other';
+export interface SupportMessage {
+id: number;
+sender: string;
+text: string;
+time: string;
+sent_at: string;
+mine: boolean;
+sender_type: 'customer' | 'agent' | 'system';
+}
+export interface SupportTicket {
+id: number;
+ticket_number: string;
+title: string;
+severity: TicketSeverity;
+status: TicketStatus;
+category: TicketCategory;
+user_name: string;
+user_plan: string;
+tags: string[];
+time_ago: string;
+message_count: number;
+assigned_to: { id: number; name: string } | null;
+created_at: string;
+}
+export interface SupportTicketDetail extends SupportTicket {
+description: string;
+user_email: string | null;
+member_since: string | null;
+clinician: string | null;
+note: string | null;
+messages: SupportMessage[];
+updated_at: string;
+resolved_at: string | null;
+}
+export interface PaginatedTickets {
+count: number;
+next: string | null;
+previous: string | null;
+results: SupportTicket[];
+}
+export interface CreateTicketPayload extends Record<string, unknown> {
+title: string;
+description: string;
+category: TicketCategory;
+}
+export interface CsatPayload extends Record<string, unknown> {
+score: number;
+comment?: string;
+}
+export interface WsChatMessage {
+type: 'chat_message';
+id: number;
+sender: string;
+sender_type: 'customer' | 'agent' | 'system';
+text: string;
+time: string;
+sent_at: string;
+mine: boolean;
+}

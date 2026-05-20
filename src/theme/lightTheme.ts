@@ -66,6 +66,16 @@ export const lightTheme = {
     navy: Colors.gradientNavy as string[],
     card: ['rgba(255,255,255,0.90)', 'rgba(255,255,255,0.70)'] as string[],
   },
-} as const;
+};
 
-export type Theme = typeof lightTheme;
+
+export type Theme = {
+  isDark: boolean;
+  colors: Record<string, string>;
+  fonts: typeof FontFamily;
+  fontSize: typeof FontSize;
+  spacing: typeof Spacing;
+  radius: typeof Radius;
+  shadow: typeof Shadow;
+  gradients: Record<string, string[]>;
+};

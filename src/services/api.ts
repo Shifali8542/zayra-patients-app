@@ -1,34 +1,29 @@
-// =============================================================================
-// src/services/api.ts
-// Production API client. No mock data. No delay(). No fake imports.
-// All logic for HTTP, token management, and data derivation lives here.
-// =============================================================================
-
 import type {
-  User,
-  BackendUser,
-  AuthTokens,
-  LoginResponse,
-  RegisterResponse,
-  PatientMe,
-  ClinicalInfo,
-  WaveformData,
-  AIAnalysisResponse,
-  PatientSTResult,
-  HeartReport,
-  HealthMetric,
-  TimelineEvent,
-  RhythmStreak,
-  ChatMessage,
+User,
+BackendUser,
+AuthTokens,
+LoginResponse,
+RegisterResponse,
+PatientMe,
+ClinicalInfo,
+WaveformData,
+AIAnalysisResponse,
+PatientSTResult,
+HeartReport,
+HealthMetric,
+TimelineEvent,
+RhythmStreak,
+ChatMessage,
+PaginatedTickets,
+SupportTicketDetail,
+SupportMessage,
+CreateTicketPayload,
+CsatPayload,
 } from '../types';
-
-// ─── Config ───────────────────────────────────────────────────────────────────
-// Change to your backend IP/domain before running on a physical device.
-// Local dev with Expo Go: use your machine's LAN IP (not localhost).
 
 export const API_BASE_URL = 'http://192.168.1.172:8000';
 
-// ─── In-memory token store ────────────────────────────────────────────────────
+// In-memory token store 
 
 let _accessToken: string | null = null;
 let _refreshToken: string | null = null;
@@ -43,7 +38,7 @@ export function setRefreshFailedCallback(cb: () => void): void {
   _onRefreshFailed = cb;
 }
 
-// ─── ApiError ─────────────────────────────────────────────────────────────────
+// ApiError 
 
 export class ApiError extends Error {
   status: number;
@@ -54,8 +49,7 @@ export class ApiError extends Error {
   }
 }
 
-// ─── Core fetch wrapper ───────────────────────────────────────────────────────
-
+//Core fetch wrapper
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: Record<string, unknown>;
@@ -129,9 +123,7 @@ async function _tryRefreshToken(): Promise<boolean> {
   }
 }
 
-// ─── mapBackendUser ───────────────────────────────────────────────────────────
-// Maps BackendUser → app User. Adds computed fields: name, journey, preferences.
-
+// Maps BackendUser → app User. 
 export function mapBackendUser(b: BackendUser): User {
   return {
     ...b,
@@ -141,7 +133,6 @@ export function mapBackendUser(b: BackendUser): User {
   };
 }
 
-// ─── Derivation helpers ───────────────────────────────────────────────────────
 // These build app-only types from raw backend responses.
 // Called in useDashboard — never expose raw backend shapes to screens.
 
@@ -293,11 +284,10 @@ export function deriveAlynaInitialChat(
   return msgs;
 }
 
-// ─── API namespace ────────────────────────────────────────────────────────────
+// API namespace
 
 export const api = {
-
-  // ── Auth ────────────────────────────────────────────────────────────────────
+  // Auth
 
   auth: {
     /** POST /api/v1/auth/login/ */
@@ -349,7 +339,7 @@ export const api = {
           method: 'POST',
           body: { refresh: _refreshToken },
         });
-      } catch { /* swallow — always clear tokens */ } finally {
+      } catch { } finally {
         setTokens(null);
       }
     },
@@ -361,7 +351,7 @@ export const api = {
     },
   },
 
-  // ── Patient ─────────────────────────────────────────────────────────────────
+  // Patient 
 
   patient: {
     /** GET /api/v1/patients/me/ */
@@ -374,11 +364,7 @@ export const api = {
       return request<ClinicalInfo>(`/api/v1/patients/me/clinical-info/${qs}`);
     },
 
-    /**
-     * GET /api/v1/patients/me/waveform/?record_id=&channels=ii&downsample=4
-     * Backend caches filtered signal for 1 hour (django_cache).
-     * Frontend also caches per record_id in useRef (useDashboard).
-     */
+   // GET /api/v1/patients/me/waveform/?record_id=&channels=ii&downsample=4
     getWaveform: async (params?: {
       recordId?: number;
       channels?: string;
@@ -392,25 +378,17 @@ export const api = {
       return request<WaveformData>(`/api/v1/patients/me/waveform/${qs}`);
     },
 
-    /**
-     * GET /api/v1/patients/me/heart-report/?record_id=
-     * New endpoint (added in backend step). Merges clinical + AI + ST in one call.
-     * Backend caches for 1 hour. Frontend also caches per record_id in useRef.
-     */
+    // GET /api/v1/patients/me/heart-report/?record_id=
     getHeartReport: async (recordId?: number): Promise<HeartReport> => {
       const qs = recordId ? `?record_id=${recordId}` : '';
       return request<HeartReport>(`/api/v1/patients/me/heart-report/${qs}`);
     },
   },
 
-  // ── Assessments ─────────────────────────────────────────────────────────────
+  // Assessments
 
   assessments: {
-    /**
-     * GET /api/v1/assessments/me/ai-analysis/?record_id=&refresh=true
-     * Returns cached Orinn result. No Orinn API call unless refresh=true.
-     * 404 = analysis not run yet → returns null in useDashboard.
-     */
+    // Returns cached Orinn result. No Orinn API call unless refresh=true.
     getAIAnalysis: async (params?: {
       recordId?: number;
       refresh?: boolean;
@@ -422,10 +400,7 @@ export const api = {
       return request<AIAnalysisResponse>(`/api/v1/assessments/me/ai-analysis/${qs}`);
     },
 
-    /**
-     * GET /api/v1/assessments/st-elevation/me/?record_id=
-     * 404 = not yet run → null.
-     */
+    // GET /api/v1/assessments/st-elevation/me/?record_id=
     getSTResult: async (recordId?: number): Promise<PatientSTResult | null> => {
       const qs = recordId ? `?record_id=${recordId}` : '';
       try {
@@ -436,6 +411,44 @@ export const api = {
         if (e instanceof ApiError && e.status === 404) return null;
         throw e;
       }
+   },
+  },
+
+  // Support 
+  support: {
+    /** GET /api/v1/support/tickets/mine/?status= */
+    getMyTickets: async (status?: string): Promise<PaginatedTickets> => {
+      const qs = status ? `?status=${status}` : '';
+      return request<PaginatedTickets>(`/api/v1/support/tickets/mine/${qs}`);
     },
+
+    /** GET /api/v1/support/tickets/<id>/ */
+    getTicketDetail: async (ticketId: number): Promise<SupportTicketDetail> =>
+      request<SupportTicketDetail>(`/api/v1/support/tickets/${ticketId}/`),
+
+    /** POST /api/v1/support/tickets/ */
+    createTicket: async (payload: CreateTicketPayload): Promise<SupportTicketDetail> =>
+      request<SupportTicketDetail>('/api/v1/support/tickets/', {
+        method: 'POST',
+        body: payload,
+      }),
+
+    /** GET /api/v1/support/tickets/<id>/messages/ */
+    getMessages: async (ticketId: number): Promise<SupportMessage[]> =>
+      request<SupportMessage[]>(`/api/v1/support/tickets/${ticketId}/messages/`),
+
+    /** POST /api/v1/support/tickets/<id>/messages/ */
+    sendMessage: async (ticketId: number, message: string): Promise<SupportMessage> =>
+      request<SupportMessage>(`/api/v1/support/tickets/${ticketId}/messages/`, {
+        method: 'POST',
+        body: { message },
+      }),
+
+    /** POST /api/v1/support/tickets/<id>/csat/ */
+    submitCsat: async (ticketId: number, payload: CsatPayload): Promise<void> =>
+      request<void>(`/api/v1/support/tickets/${ticketId}/csat/`, {
+        method: 'POST',
+        body: payload,
+      }),
   },
 };
