@@ -40,8 +40,6 @@ import type {
   ClinicalInfo,
   AIAnalysisResponse,
   PatientSTResult,
-  WaveformData,
-  HeartReport,
 } from '../../../types';
 
 // ─── Static app-defined content ───────────────────────────────────────────────
@@ -136,10 +134,6 @@ export function useDashboard() {
     noPatientProfile: false,
   });
 
-  // Per-record caches — survive tab switches, cleared on logout
-  const waveformCache = useRef<Record<number, WaveformData>>({});
-  const heartReportCache = useRef<Record<number, HeartReport>>({});
-
   const loadAll = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null, noPatientProfile: false }));
 
@@ -204,38 +198,8 @@ export function useDashboard() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // ── Per-record waveform — cached per record_id ────────────────────────────
 
-  const getWaveform = useCallback(async (recordId: number): Promise<WaveformData | null> => {
-    if (waveformCache.current[recordId]) {
-      return waveformCache.current[recordId];
-    }
-    try {
-       const data = await api.patient.getWaveform({ recordId, downsample: 4 });
-      waveformCache.current[recordId] = data;
-      return data;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // ── Per-record heart report — cached per record_id ────────────────────────
-
-  const getHeartReport = useCallback(async (recordId: number): Promise<HeartReport | null> => {
-    if (heartReportCache.current[recordId]) {
-      return heartReportCache.current[recordId];
-    }
-    try {
-      const data = await api.patient.getHeartReport(recordId);
-      heartReportCache.current[recordId] = data;
-      return data;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // ── Send Alyna message ────────────────────────────────────────────────────
-
+  // Send Alyna message
   const sendAlynaMessage = useCallback(async (message: string): Promise<ChatMessage | null> => {
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     try {
@@ -264,11 +228,8 @@ export function useDashboard() {
     }
   }, [state.patientMe]);
 
-  // Clear per-record caches on logout (called from AuthContext)
   const clearCache = useCallback(() => {
-    waveformCache.current = {};
-    heartReportCache.current = {};
   }, []);
 
-  return { ...state, sendAlynaMessage, getWaveform, getHeartReport, clearCache, reload: loadAll };
+  return { ...state, sendAlynaMessage, clearCache, reload: loadAll };
 }

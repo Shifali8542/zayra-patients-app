@@ -115,60 +115,6 @@ export interface ClinicalInfo {
   diagnoses: string[];
 }
 
-// WaveformData
-export interface WaveformSegment {
-  samples: number[];
-  start_sec: number;
-  end_sec: number;
-}
-
-export interface WaveformSegments {
-  before: WaveformSegment;
-  anomaly: WaveformSegment;
-  after: WaveformSegment;
-}
-
-export interface WaveformSegment {
-  samples: number[];
-  start_sec: number;
-  end_sec: number;
-}
-
-export interface WaveformData {
-  patient_code: string;
-  record_id: number;
-  record_name: string;
-  record_label: string;
-  record_index: number;
-  total_records: number;
-  diagnosis: string | null;
-  age: number | null;
-  sex: string | null;
-  sampling_rate: number;
-  effective_sampling_rate: number;
-  num_samples: number;
-  duration_seconds: number | null;
-  channel_names: string[];
-  all_channel_names: string[];
-  units: string[];
-  waveforms: Record<string, number[]>;
-  grid: {
-    paper_speed_mm_per_sec: number;
-    amplitude_mm_per_mv: number;
-    small_box_ms: number;
-    large_box_ms: number;
-    small_box_mv: number;
-    large_box_mv: number;
-  };
-  recommended_display_seconds: number;
-  segments: {
-    before: WaveformSegment;
-    anomaly: WaveformSegment;
-    after: WaveformSegment;
-  };
-  filtered: boolean;
-}
-
 // AIAnalysisResult
 export interface AIAnalysisResult {
   id: number;
@@ -196,30 +142,6 @@ export interface PatientSTResult {
   last_checked: string;
 }
 
-// HeartReport 
-export interface HeartReport {
-  patient_code: string;
-  record_id: number;
-  record_name: string;
-  record_label: string;
-  record_index: number;
-  total_records: number;
-  dataset_source: string;
-  dataset_source_display: string;
-  demographics: {
-    age: number | null;
-    sex: string | null;
-    diagnosis: string | null;
-  };
-  diagnoses: string[];
-  ecg_metrics: ECGAnalysis | null;
-  metrics_source: 'cache' | 'live' | 'error' | 'none';
-  ai_analysis: AIAnalysisResult | null;
-  st_result: HeartReportSTResult | null;
-  metrics_available: boolean;
-  ai_available: boolean;
-  st_available: boolean;
-}
 
 // ST result shape inside heart-report 
 export interface HeartReportSTResult {
@@ -314,10 +236,9 @@ export type AuthStackParamList = {
   Signup: undefined;
 };
 
-// Tab order: Home | ECG | Alyna | Rhythm | Circle | Stories | Profile
+// Tab order: Home | Alyna | Rhythm | Circle | Stories | Profile
 export type TabParamList = {
   Home: undefined;
-  ECG: undefined;
   Alyna: undefined;
   Rhythm: undefined;
   Circle: undefined;

@@ -6,9 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDashboard } from '../../features/dashboard/hooks/useDashboard';
-
 import { HomeScreen } from '../../features/dashboard/screens/HomeScreen/HomeScreen';
-import { ECGScreen } from '../../features/dashboard/screens/ECGScreen/ECGScreen';
 import { AlynaScreen } from '../../features/dashboard/screens/AlynaScreen/AlynaScreen';
 import { RhythmScreen } from '../../features/dashboard/screens/RhythmScreen/RhythmScreen';
 import { CircleScreen } from '../../features/dashboard/screens/CircleScreen/CircleScreen';
@@ -24,7 +22,6 @@ const Tab = createBottomTabNavigator<TabParamList>();
 // Tab order: Home | ECG | Alyna | Rhythm | Circle | Stories | Profile
 const TAB_ICONS: Record<string, string> = {
   Home: '🏠',
-  ECG: '❤️',
   Alyna: '✨',
   Rhythm: '🔥',
   Circle: '👥',
@@ -154,18 +151,7 @@ function DashboardWrapper() {
         )}
       </Tab.Screen>
 
-      {/* 2. ECG — new tab */}
-      <Tab.Screen name="ECG">
-        {() => wrap(
-          <ECGScreen
-            patientMe={dashboard.patientMe}
-            getWaveform={dashboard.getWaveform}
-            getHeartReport={dashboard.getHeartReport}
-          />
-        )}
-      </Tab.Screen>
-
-      {/* 3. Alyna */}
+      {/* 2. Alyna */}
       <Tab.Screen name="Alyna">
         {() => wrap(
           <AlynaScreen

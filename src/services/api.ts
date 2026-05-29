@@ -6,10 +6,8 @@ LoginResponse,
 RegisterResponse,
 PatientMe,
 ClinicalInfo,
-WaveformData,
 AIAnalysisResponse,
 PatientSTResult,
-HeartReport,
 HealthMetric,
 TimelineEvent,
 RhythmStreak,
@@ -352,37 +350,15 @@ export const api = {
   },
 
   // Patient 
-
   patient: {
-    /** GET /api/v1/patients/me/ */
     getMe: async (): Promise<PatientMe> =>
       request<PatientMe>('/api/v1/patients/me/'),
 
-    /** GET /api/v1/patients/me/clinical-info/?record_id= */
     getClinicalInfo: async (recordId?: number): Promise<ClinicalInfo> => {
       const qs = recordId ? `?record_id=${recordId}` : '';
       return request<ClinicalInfo>(`/api/v1/patients/me/clinical-info/${qs}`);
     },
 
-   // GET /api/v1/patients/me/waveform/?record_id=&channels=ii&downsample=4
-    getWaveform: async (params?: {
-      recordId?: number;
-      channels?: string;
-      downsample?: number;
-    }): Promise<WaveformData> => {
-      const qp = new URLSearchParams();
-      if (params?.recordId) qp.set('record_id', String(params.recordId));
-      if (params?.channels) qp.set('channels', params.channels);
-      if (params?.downsample) qp.set('downsample', String(params.downsample));
-      const qs = qp.toString() ? `?${qp.toString()}` : '';
-      return request<WaveformData>(`/api/v1/patients/me/waveform/${qs}`);
-    },
-
-    // GET /api/v1/patients/me/heart-report/?record_id=
-    getHeartReport: async (recordId?: number): Promise<HeartReport> => {
-      const qs = recordId ? `?record_id=${recordId}` : '';
-      return request<HeartReport>(`/api/v1/patients/me/heart-report/${qs}`);
-    },
   },
 
   // Assessments
@@ -416,35 +392,31 @@ export const api = {
 
   // Support 
   support: {
-    /** GET /api/v1/support/tickets/mine/?status= */
     getMyTickets: async (status?: string): Promise<PaginatedTickets> => {
       const qs = status ? `?status=${status}` : '';
       return request<PaginatedTickets>(`/api/v1/support/tickets/mine/${qs}`);
     },
 
-    /** GET /api/v1/support/tickets/<id>/ */
     getTicketDetail: async (ticketId: number): Promise<SupportTicketDetail> =>
       request<SupportTicketDetail>(`/api/v1/support/tickets/${ticketId}/`),
 
-    /** POST /api/v1/support/tickets/ */
     createTicket: async (payload: CreateTicketPayload): Promise<SupportTicketDetail> =>
       request<SupportTicketDetail>('/api/v1/support/tickets/', {
         method: 'POST',
         body: payload,
       }),
 
-    /** GET /api/v1/support/tickets/<id>/messages/ */
     getMessages: async (ticketId: number): Promise<SupportMessage[]> =>
       request<SupportMessage[]>(`/api/v1/support/tickets/${ticketId}/messages/`),
 
-    /** POST /api/v1/support/tickets/<id>/messages/ */
+
     sendMessage: async (ticketId: number, message: string): Promise<SupportMessage> =>
       request<SupportMessage>(`/api/v1/support/tickets/${ticketId}/messages/`, {
         method: 'POST',
         body: { message },
       }),
 
-    /** POST /api/v1/support/tickets/<id>/csat/ */
+
     submitCsat: async (ticketId: number, payload: CsatPayload): Promise<void> =>
       request<void>(`/api/v1/support/tickets/${ticketId}/csat/`, {
         method: 'POST',

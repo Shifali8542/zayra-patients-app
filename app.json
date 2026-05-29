@@ -28,6 +28,10 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-font"]
+    "plugins": [
+      "expo-font",
+      "react-native-ble-plx",
+      "expo-build-properties"
+    ]
   }
 }
