@@ -19,7 +19,7 @@ import type { TabParamList } from '../../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-// Tab order: Home | ECG | Alyna | Rhythm | Circle | Stories | Profile
+// Tab order: Home | Alyna | Rhythm | Circle | Stories | Profile
 const TAB_ICONS: Record<string, string> = {
   Home: '🏠',
   Alyna: '✨',

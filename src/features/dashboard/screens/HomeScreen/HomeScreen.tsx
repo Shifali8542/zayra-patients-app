@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ECGChart } from '../../../../components/ui/ECGChart';
 import { PulsingDot } from '../../../../components/ui/PulsingDot';
+import { useBLEContext } from '../../../../contexts/BLEContext';
 import { StatusBadge } from '../../../../components/ui/StatusBadge';
 import { homeStyles as styles } from './HomeScreen.style';
 import type { HealthMetric, TimelineEvent, TimelineEventType, PatientSTResult } from '../../../../types';
@@ -40,6 +41,19 @@ function fmt(val: number | null | undefined, decimals = 0): string {
 export function HomeScreen({ metrics, timeline, interpretation, stResult }: HomeScreenProps) {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { status: bleStatus, connect, disconnect } = useBLEContext();
+  const isConnected = bleStatus === 'streaming';
+  const isTransitional = ['scanning', 'connecting', 'discovering', 'reconnecting'].includes(bleStatus);
+  const bleLabel = {
+    idle: 'Connect Axiom',
+    scanning: 'Scanning…',
+    connecting: 'Connecting…',
+    discovering: 'Setting up…',
+    streaming: 'Disconnect',
+    reconnecting: 'Reconnecting…',
+    disconnected: 'Reconnect',
+    error: 'Retry',
+  }[bleStatus] ?? 'Connect Axiom';
   const firstName = user?.first_name?.toLowerCase() || user?.name?.toLowerCase() || '';
 
   return (
@@ -77,11 +91,23 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult }: Home
               Axiom — Live
             </Text>
           </View>
-          <View style={[styles.signalBadge, { backgroundColor: theme.colors.tealAlpha10 }]}>
-            <Text style={[styles.signalText, { color: theme.colors.primary, fontFamily: theme.fonts.sansSemiBold, fontSize: theme.fontSize.xs }]}>
-              {metrics?.signalStrength != null ? `Signal ${metrics.signalStrength}%` : 'Signal —'}
+          <TouchableOpacity
+            onPress={isConnected ? disconnect : connect}
+            disabled={isTransitional}
+            style={[styles.signalBadge, {
+              backgroundColor: isConnected ? theme.colors.primary : theme.colors.tealAlpha10,
+              opacity: isTransitional ? 0.6 : 1,
+            }]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.signalText, {
+              color: isConnected ? '#FFFFFF' : theme.colors.primary,
+              fontFamily: theme.fonts.sansSemiBold,
+              fontSize: theme.fontSize.xs,
+            }]}>
+              {bleLabel}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Real AI narrative replaces hardcoded string */}

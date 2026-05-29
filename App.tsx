@@ -18,6 +18,7 @@ import {
 
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { BLEProvider } from './src/contexts/BLEContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 SplashScreen.preventAutoHideAsync();
@@ -47,11 +48,13 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-            <NavigationContainer>
-              <RootNavigator />
-            </NavigationContainer>
-          </View>
+          <BLEProvider>
+            <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+              <NavigationContainer>
+                <RootNavigator />
+              </NavigationContainer>
+            </View>
+          </BLEProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -30,8 +30,22 @@
     },
     "plugins": [
       "expo-font",
-      "react-native-ble-plx",
-      "expo-build-properties"
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": ["central"],
+          "bluetoothAlwaysPermission": "Allow Zayra to connect to your Axiom device"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
     ]
   }
 }
