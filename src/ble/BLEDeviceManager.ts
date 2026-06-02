@@ -34,9 +34,19 @@ export class BLEDeviceManager {
   onError(fn: ErrorListener) { this.errorListeners.add(fn); return () => this.errorListeners.delete(fn) }
 
   async connect(): Promise<void> {
-    this.device = null
-    this.reconnectAttempts = 0
+    // Clean up previous connection completely before scanning again
     this._isReconnecting = false
+    this._connected = false
+    this.reconnectAttempts = 0
+    this.ecgSubscription?.remove()
+    this.hrSubscription?.remove()
+    this.ecgSubscription = null
+    this.hrSubscription = null
+
+    if (this.device) {
+      try { await this.device.cancelConnection() } catch { }
+      this.device = null
+    }
 
     if (!this.manager) this.manager = new BleManager()
 
@@ -79,11 +89,19 @@ export class BLEDeviceManager {
     this._isReconnecting = false
     this._connected = false
     this.reconnectAttempts = 0
-    this.ecgSubscription?.remove()
-    this.hrSubscription?.remove()
+
+    // Clean subscriptions first
+    try { this.ecgSubscription?.remove() } catch { }
+    try { this.hrSubscription?.remove() } catch { }
+    this.ecgSubscription = null
+    this.hrSubscription = null
+
+    // Cancel device connection
     if (this.device) {
       try { await this.device.cancelConnection() } catch { }
+      this.device = null
     }
+
     this.emitStatus('idle')
   }
 

@@ -1,6 +1,41 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User, AuthTokens } from '../types';
 import { api, setTokens, setRefreshFailedCallback } from '../services/api';
+
+// ── Persistence keys ──────────────────────────────────────────────────────────
+const KEY_ACCESS  = 'zayra_access_token';
+const KEY_REFRESH = 'zayra_refresh_token';
+const KEY_USER    = 'zayra_user';
+
+async function persistSession(user: User, tokens: AuthTokens): Promise<void> {
+  try {
+    await AsyncStorage.multiSet([
+      [KEY_ACCESS,  tokens.access],
+      [KEY_REFRESH, tokens.refresh],
+      [KEY_USER,    JSON.stringify(user)],
+    ]);
+  } catch { /* storage error — ignore */ }
+}
+
+async function clearSession(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([KEY_ACCESS, KEY_REFRESH, KEY_USER]);
+  } catch { /* ignore */ }
+}
+
+async function restoreSession(): Promise<{ user: User; tokens: AuthTokens } | null> {
+  try {
+    const [[, access], [, refresh], [, userRaw]] = await AsyncStorage.multiGet([
+      KEY_ACCESS, KEY_REFRESH, KEY_USER,
+    ]);
+    if (!access || !refresh || !userRaw) return null;
+    const user = JSON.parse(userRaw) as User;
+    return { user, tokens: { access, refresh } };
+  } catch {
+    return null;
+  }
+}
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -20,12 +55,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [tokens, setTokensState] = useState<AuthTokens | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // true until session restore completes
   const [error, setError] = useState<string | null>(null);
 
-  // Register forced-logout callback for expired refresh tokens
+  // ── Restore session on app start ──────────────────────────────────────────
+  useEffect(() => {
+    restoreSession().then((saved) => {
+      if (saved) {
+        setTokens(saved.tokens);       // restore into api service
+        setUser(saved.user);
+        setTokensState(saved.tokens);
+        setIsAuthenticated(true);
+      }
+    }).finally(() => {
+      setLoading(false);
+    });
+  }, []);
+
+  // Register
   useEffect(() => {
     setRefreshFailedCallback(() => {
+      clearSession();
       setUser(null);
       setTokensState(null);
       setIsAuthenticated(false);
@@ -40,6 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const { user: u, tokens: t } = await api.auth.login(email, password);
+      await persistSession(u, t);      // ← save to AsyncStorage
       setUser(u);
       setTokensState(t);
       setIsAuthenticated(true);
@@ -57,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const { user: u, tokens: t } = await api.auth.register(name, email, password);
+      await persistSession(u, t);      // ← save to AsyncStorage
       setUser(u);
       setTokensState(t);
       setIsAuthenticated(true);
@@ -74,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.auth.logout();
     } finally {
+      await clearSession();
       setUser(null);
       setTokensState(null);
       setIsAuthenticated(false);
