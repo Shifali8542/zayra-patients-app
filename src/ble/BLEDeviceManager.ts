@@ -1,4 +1,5 @@
 import { BleManager, State, Device } from 'react-native-ble-plx'
+import { PermissionsAndroid, Platform } from 'react-native'
 import {
   BLE_DEVICE_NAME,
   BLE_SERVICES,
@@ -33,56 +34,121 @@ export class BLEDeviceManager {
   onECG(fn: ECGListener) { this.ecgListeners.add(fn); return () => this.ecgListeners.delete(fn) }
   onError(fn: ErrorListener) { this.errorListeners.add(fn); return () => this.errorListeners.delete(fn) }
 
-  async connect(): Promise<void> {
-    // Clean up previous connection completely before scanning again
-    this._isReconnecting = false
-    this._connected = false
-    this.reconnectAttempts = 0
-    this.ecgSubscription?.remove()
-    this.hrSubscription?.remove()
-    this.ecgSubscription = null
-    this.hrSubscription = null
-
-    if (this.device) {
-      try { await this.device.cancelConnection() } catch { }
-      this.device = null
+  private async requestPermissions(): Promise<boolean> {
+    if (Platform.OS === 'android') {
+      if (Platform.Version >= 31) {
+        const result = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        ]);
+        return result['android.permission.BLUETOOTH_CONNECT'] === PermissionsAndroid.RESULTS.GRANTED;
+      } else {
+        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        return result === PermissionsAndroid.RESULTS.GRANTED;
+      }
     }
+    return true;
+  }
 
-    if (!this.manager) this.manager = new BleManager()
+ async connect(): Promise<void> {
+    console.log("--- 🚀 BLE CONNECT INITIATED ---");
+    
+    try {
+      this._isReconnecting = false;
+      this._connected = false;
+      this.reconnectAttempts = 0;
+      this.ecgSubscription?.remove();
+      this.hrSubscription?.remove();
+      this.ecgSubscription = null;
+      this.hrSubscription = null;
 
-    const state = await this.manager.state()
-    if (state !== State.PoweredOn) {
-      this.emitError('Bluetooth is off. Please enable Bluetooth and try again.')
-      this.emitStatus('error')
-      return
+      if (this.device) {
+        try { await this.device.cancelConnection() } catch { }
+        this.device = null;
+      }
+
+      if (!this.manager) {
+        console.log("⚙️ Initializing BleManager...");
+        this.manager = new BleManager();
+      }
+
+      // 1. Request Permissions
+      console.log("🔒 1. Requesting Permissions...");
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        console.log("❌ Permissions denied by user.");
+        this.emitError('Bluetooth permissions denied by user.');
+        this.emitStatus('error');
+        return;
+      }
+      console.log("✅ Permissions granted!");
+
+     // 2. Turn on Bluetooth Adapter
+      console.log("📻 2. Checking Bluetooth Adapter State...");
+      
+      // Get current state
+      let state = await this.manager.state();
+      
+      // If the bridge is still waking up, wait half a second
+      if (state === State.Unknown) {
+        console.log("⏳ State is Unknown, waiting 500ms for radio to wake up...");
+        await new Promise(resolve => setTimeout(resolve, 500));
+        state = await this.manager.state();
+      }
+
+      if (state !== State.PoweredOn) {
+        console.log("❌ Bluetooth adapter is OFF. Current state:", state);
+        this.emitError('Bluetooth is off. Please swipe down from the top of your phone and turn it on manually.');
+        this.emitStatus('error');
+        return;
+      }
+      console.log("✅ Bluetooth is Powered On!");
+
+      // 3. Start Scanning
+      console.log("📡 3. Starting Device Scan for: " + BLE_DEVICE_NAME);
+      this.emitStatus('scanning');
+      
+      return new Promise((resolve) => {
+        this.manager!.startDeviceScan(null, null, async (error, device) => {
+          if (error) {
+            console.log("❌ Scan error: ", error.message);
+            this.emitError(`Scan error: ${error.message}`);
+            this.emitStatus('error');
+            resolve();
+            return;
+          }
+
+          console.log(`...found device: ${device?.name || 'Unknown'}`);
+
+          if (device?.name === BLE_DEVICE_NAME) {
+            console.log("🎯 MATCH FOUND! Stopping scan...");
+            this.manager!.stopDeviceScan();
+            this.device = device;
+            
+            console.log("🔗 Initiating GATT Connection...");
+            await this.connectGATT();
+            resolve();
+          }
+        });
+
+        // Auto-stop scan after 15 seconds
+        setTimeout(() => {
+          this.manager!.stopDeviceScan();
+          if (!this.device) {
+            console.log("⏰ 15 Seconds passed. Device not found.");
+            this.emitError('Zayra-Axiom device not found. Make sure the device is on and nearby.');
+            this.emitStatus('idle');
+            resolve();
+          }
+        }, 15000);
+      });
+
+    } catch (criticalError: any) {
+      console.log("💥 CRITICAL CRASH IN CONNECT():", criticalError.message);
+      this.emitError('System error during connection setup.');
+      this.emitStatus('error');
     }
-
-   this.emitStatus('scanning')
-    return new Promise((resolve) => {
-      this.manager!.startDeviceScan(null, null, async (error, device) => {
-        if (error) {
-          this.emitError(`Scan error: ${error.message}`)
-          this.emitStatus('error')
-          resolve()
-          return
-        }
-        if (device?.name === BLE_DEVICE_NAME) {
-          this.manager!.stopDeviceScan()
-          this.device = device
-          await this.connectGATT()
-          resolve()
-        }
-      })
-      // Auto-stop scan after 15 seconds
-      setTimeout(() => {
-        this.manager!.stopDeviceScan()
-        if (!this.device) {
-          this.emitError('Zayra-Axiom device not found. Make sure the device is on and nearby.')
-          this.emitStatus('idle')
-          resolve()
-        }
-      }, 15000)
-    })
   }
 
   async disconnect(): Promise<void> {
@@ -117,25 +183,33 @@ export class BLEDeviceManager {
   private async connectGATT(): Promise<void> {
     if (!this.device) return
     try {
+      console.log('🔗 connectGATT: connecting...')
       this.emitStatus('connecting')
       this.device = await this.device.connect()
+      console.log('✅ connectGATT: connected, discovering services...')
       this.emitStatus('discovering')
       this.device = await this.device.discoverAllServicesAndCharacteristics()
+      console.log('✅ connectGATT: services discovered')
 
       this.device.onDisconnected((_error, _device) => {
+        console.log('⚠️ Device disconnected')
         if (!this._isReconnecting) {
           this._isReconnecting = true
           this.attemptReconnect()
         }
       })
 
+      console.log('📡 Subscribing to ECG...')
       this.subscribeToECG()
+      console.log('💓 Subscribing to Vitals...')
       this.subscribeToVitals()
       this.reconnectAttempts = 0
       this._isReconnecting = false
       this._connected = true
+      console.log('🟢 STATUS: streaming — BLE fully connected')
       this.emitStatus('streaming')
     } catch (e: unknown) {
+      console.log('💥 connectGATT FAILED:', e instanceof Error ? e.message : String(e))
       this._connected = false
       this.emitError(`Could not connect: ${e instanceof Error ? e.message : String(e)}`)
       this.emitStatus('error')
@@ -161,16 +235,28 @@ export class BLEDeviceManager {
   private subscribeToECG(): void {
     if (!this.device) return
     try {
+      let packetCount = 0
       this.ecgSubscription = this.device.monitorCharacteristicForService(
         BLE_SERVICES.ECG,
         BLE_CHARACTERISTICS.ECG_STREAM,
         (_error, characteristic) => {
+          if (_error) {
+            console.log('❌ ECG subscription error:', _error.message)
+            return
+          }
           if (!characteristic?.value) return
           const parsed = parseECGPacket(characteristic.value)
+          packetCount++
+          if (packetCount % 50 === 0) {
+            console.log(`📦 ECG packets received: ${packetCount}, valid: ${parsed.valid}, samples: ${parsed.samples?.length}`)
+          }
           if (parsed.valid) this.ecgListeners.forEach(fn => fn(parsed.samples))
         }
       )
-    } catch { }
+      console.log('✅ ECG subscription active')
+    } catch (e: any) {
+      console.log('❌ subscribeToECG failed:', e.message)
+    }
   }
 
   private subscribeToVitals(): void {
