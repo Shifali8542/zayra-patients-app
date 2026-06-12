@@ -14,7 +14,7 @@ export interface BLEDeviceHookResult {
   disconnect: () => Promise<void>
 }
 
-export function useBLEDevice(): BLEDeviceHookResult {
+export function useBLEDevice(patientCode?: string): BLEDeviceHookResult {
   const [status, setStatus]               = useState<BLEStatus>('idle')
   const [vitals, setVitals]               = useState<BLEVitals | null>(null)
   const [error, setError]                 = useState<string | null>(null)

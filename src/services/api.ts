@@ -359,6 +359,30 @@ export const api = {
       return request<ClinicalInfo>(`/api/v1/patients/me/clinical-info/${qs}`);
     },
 
+    bleUpload: async (payload: {
+      patient_code: string;
+      samples: number[];
+      sampling_hz?: number;
+      heart_rate_bpm?: number | null;
+      hrv_ms?: number | null;
+      age?: number | null;
+      sex?: string | null;
+      condition?: string | null;
+    }): Promise<{ ai_prediction?: Record<string, unknown> }> =>
+      request<{ ai_prediction?: Record<string, unknown> }>('/api/v1/patients/me/ble-upload/', {
+        method: 'POST',
+        body: {
+          patient_code: payload.patient_code,
+          samples: payload.samples,
+          sampling_hz: payload.sampling_hz ?? 500,
+          heart_rate_bpm: payload.heart_rate_bpm ?? null,
+          hrv_ms: payload.hrv_ms ?? null,
+          age: payload.age ?? null,
+          sex: payload.sex ?? null,
+          condition: payload.condition ?? null,
+        },
+      }),
+
   },
 
   // Assessments
