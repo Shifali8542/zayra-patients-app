@@ -5,8 +5,7 @@ import { Spacing, Radius, Shadow } from './spacing';
 export const darkTheme = {
   isDark: true as const,
   colors: {
-    background: Colors.gradientDarkBg,
-    backgroundSolid: Colors.navy,
+    backgroundSolid: '#0D1B2A',
     surface: Colors.navyMid,
     surfaceAlt: '#0F2235',
     border: 'rgba(255,255,255,0.10)',

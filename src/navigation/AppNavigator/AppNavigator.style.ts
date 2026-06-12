@@ -1,6 +1,23 @@
 import { StyleSheet } from 'react-native';
 
 export const appNavigatorStyles = StyleSheet.create({
+  barContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    marginHorizontal: 8,
+    marginBottom: 4,
+  },
+  tabIconWrap: {
+    borderRadius: 14,
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   // Tab bar
   safeArea: { borderTopWidth: 1 },
   bar: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },

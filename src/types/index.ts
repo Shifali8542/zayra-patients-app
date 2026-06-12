@@ -236,6 +236,20 @@ export type AuthStackParamList = {
   Signup: undefined;
 };
 
+// Journey types
+export type JourneyType = 'wellness' | 'care' | 'evac' | 'hospital';
+
+// Onboarding state
+export type OnboardingPhase = 'landing' | 'journey' | 'name' | 'goals' | 'baseline' | 'promise' | 'dashboard';
+
+export interface OnboardingState {
+  phase: OnboardingPhase;
+  selectedJourney: JourneyType | null;
+  name: string;
+  selectedGoals: string[];
+  age: number;
+}
+
 // Tab order: Home | Alyna | Rhythm | Circle | Stories | Profile
 export type TabParamList = {
   Home: undefined;
@@ -244,6 +258,16 @@ export type TabParamList = {
   Circle: undefined;
   Stories: undefined;
   Profile: undefined;
+};
+
+// Onboarding navigation
+export type OnboardingStackParamList = {
+  Landing: undefined;
+  JourneySelect: undefined;
+  OnboardingName: { journey: JourneyType };
+  OnboardingGoals: { journey: JourneyType; name: string };
+  OnboardingBaseline: { journey: JourneyType; name: string; goals: string[] };
+  OnboardingPromise: { journey: JourneyType; name: string; goals: string[]; age: number };
 };
 
 // Customer Support

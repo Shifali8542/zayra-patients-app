@@ -15,7 +15,7 @@ import { ProfileScreen } from '../../features/dashboard/screens/ProfileScreen/Pr
 import { SupportListScreen } from '../../features/support/screens/SupportListScreen/SupportListScreen';
 import { TicketChatScreen } from '../../features/support/screens/TicketChatScreen/TicketChatScreen';
 import { appNavigatorStyles as styles } from './AppNavigator.style';
-import type { TabParamList } from '../../types';
+import type { TabParamList, JourneyType } from '../../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
@@ -29,16 +29,27 @@ const TAB_ICONS: Record<string, string> = {
   Profile: '👤',
 };
 
-// ─── Custom tab bar ────────────────────────────────────────────────────────────
-
-function CustomTabBar({ state, descriptors, navigation }: any) {
+// ─── Custom tab bar 
+function CustomTabBar({ state, descriptors, navigation, isDark }: any) {
   const { theme } = useTheme();
   return (
     <SafeAreaView
       edges={['bottom']}
-      style={[styles.safeArea, { backgroundColor: theme.colors.navBackground, borderTopColor: theme.colors.navBorder }]}
+      style={[
+        styles.safeArea,
+        {
+          backgroundColor: isDark ? 'transparent' : theme.colors.navBackground,
+          borderTopColor: isDark ? 'rgba(255,255,255,0.10)' : theme.colors.navBorder,
+        },
+      ]}
     >
-      <View style={styles.bar}>
+      <View style={[
+        styles.barContainer,
+        {
+          backgroundColor: isDark ? 'rgba(13,27,42,0.60)' : 'rgba(255,255,255,0.72)',
+          borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)',
+        },
+      ]}>
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
           const icon = TAB_ICONS[route.name] ?? '●';
@@ -48,15 +59,23 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           };
           return (
             <TouchableOpacity key={route.key} onPress={onPress} style={styles.tabItem} activeOpacity={0.7}>
-              <Text style={[styles.tabIcon, { opacity: isFocused ? 1 : 0.45 }]}>{icon}</Text>
+              <View style={[
+                styles.tabIconWrap,
+                isFocused && {
+                  backgroundColor: isDark ? 'rgba(0,194,178,0.15)' : 'rgba(0,194,178,0.12)',
+                },
+              ]}>
+                <Text style={[styles.tabIcon, { opacity: isFocused ? 1 : 0.45 }]}>{icon}</Text>
+              </View>
               <Text style={[styles.tabLabel, {
-                color: isFocused ? theme.colors.navActive : theme.colors.navInactive,
+                color: isFocused
+                  ? (isDark ? '#7DDDD5' : theme.colors.navActive)
+                  : (isDark ? 'rgba(255,255,255,0.50)' : theme.colors.navInactive),
                 fontFamily: isFocused ? theme.fonts.sansSemiBold : theme.fonts.sansRegular,
                 fontSize: theme.fontSize.xxs,
               }]}>
                 {route.name}
               </Text>
-              {isFocused && <View style={[styles.activeIndicator, { backgroundColor: theme.colors.primary }]} />}
             </TouchableOpacity>
           );
         })}
@@ -113,11 +132,16 @@ function NoProfileScreen({ onSignOut }: { onSignOut: () => void }) {
 }
 
 // Dashboard wrapper
+interface DashboardWrapperProps {
+  selectedJourney: JourneyType;
+  onJourneySwitch: (journey: JourneyType) => void;
+}
 
-function DashboardWrapper() {
+function DashboardWrapper({ selectedJourney, onJourneySwitch }: DashboardWrapperProps) {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
   const dashboard = useDashboard();
+  const isEvacJourney = selectedJourney === 'evac';
 
   // Support navigation state — drives profile tab sub-screens
   const [supportView, setSupportView] = React.useState<
@@ -129,7 +153,10 @@ function DashboardWrapper() {
   if (dashboard.noPatientProfile) return <NoProfileScreen onSignOut={logout} />;
 
   const wrap = (children: React.ReactNode) => (
-    <LinearGradient colors={theme.gradients.bg as [string, string, ...string[]]} style={{ flex: 1 }}>
+    <LinearGradient
+      colors={(isEvacJourney ? theme.gradients.evac : theme.gradients.bg) as [string, string, ...string[]]}
+      style={{ flex: 1 }}
+    >
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         {children}
       </SafeAreaView>
@@ -137,7 +164,10 @@ function DashboardWrapper() {
   );
 
   return (
-    <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} isDark={isEvacJourney} />}
+      screenOptions={{ headerShown: false }}
+    >
 
       {/* 1. Home */}
       <Tab.Screen name="Home">
@@ -147,6 +177,7 @@ function DashboardWrapper() {
             timeline={dashboard.timeline}
             interpretation={dashboard.interpretation}
             stResult={dashboard.stResult}
+            journey={selectedJourney}
           />
         )}
       </Tab.Screen>
@@ -214,6 +245,8 @@ function DashboardWrapper() {
                 onLogout={logout}
                 clinicalInfo={dashboard.clinicalInfo}
                 onOpenSupport={() => setSupportView({ screen: 'list' })}
+                selectedJourney={selectedJourney}
+                onJourneySwitch={onJourneySwitch}
               />
             )
           ) : null
@@ -224,6 +257,11 @@ function DashboardWrapper() {
   );
 }
 
-export function AppNavigator() {
-  return <DashboardWrapper />;
+interface AppNavigatorProps {
+  selectedJourney: JourneyType;
+  onJourneySwitch: (journey: JourneyType) => void;
+}
+
+export function AppNavigator({ selectedJourney, onJourneySwitch }: AppNavigatorProps) {
+  return <DashboardWrapper selectedJourney={selectedJourney} onJourneySwitch={onJourneySwitch} />;
 }

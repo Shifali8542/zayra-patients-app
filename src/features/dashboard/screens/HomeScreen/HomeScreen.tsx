@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../../contexts/ThemeContext';
+import { ZayraLogo } from '../../../../components/ui/ZayraLogo';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ECGChart } from '../../../../components/ui/ECGChart';
 import { PulsingDot } from '../../../../components/ui/PulsingDot';
@@ -14,6 +16,7 @@ interface HomeScreenProps {
   timeline: TimelineEvent[];
   interpretation: string | null;
   stResult: PatientSTResult | null;
+  journey?: 'wellness' | 'care' | 'evac' | 'hospital';
 }
 
 function getGreeting(): string {
@@ -38,12 +41,15 @@ function fmt(val: number | null | undefined, decimals = 0): string {
   return decimals > 0 ? val.toFixed(decimals) : String(Math.round(val));
 }
 
-export function HomeScreen({ metrics, timeline, interpretation, stResult }: HomeScreenProps) {
+export function HomeScreen({ metrics, timeline, interpretation, stResult, journey = 'care' }: HomeScreenProps) {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { status: bleStatus, connect, disconnect } = useBLEContext();
   const isConnected = bleStatus === 'streaming';
   const isTransitional = ['scanning', 'connecting', 'discovering', 'reconnecting'].includes(bleStatus);
+  const isEvac = journey === 'evac';
+  const isWellness = journey === 'wellness';
+  const isHospital = journey === 'hospital';
   const bleLabel = {
     idle: 'Connect Axiom',
     scanning: 'Scanning…',
@@ -59,6 +65,26 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult }: Home
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
+      {/* ── App header bar — icon only, matching web HomeTab ── */}
+      <View style={styles.appHeader}>
+        <ZayraLogo size={28} showText={false} variant="icon" />
+        <View style={[
+          styles.journeyBadge,
+          {
+            borderColor: isEvac ? 'rgba(255,255,255,0.15)' : theme.colors.border,
+            backgroundColor: isEvac ? 'rgba(255,255,255,0.05)' : theme.colors.surface,
+          },
+        ]}>
+          <Text style={[styles.journeyBadgeText, {
+            color: isEvac ? '#7DDDD5' : theme.colors.textSecondary,
+            fontFamily: theme.fonts.sansSemiBold,
+            fontSize: theme.fontSize.xs,
+          }]}>
+            {isEvac ? '🛡 Evac armed' : `● ${journey}`}
+          </Text>
+        </View>
+      </View>
+
       {/* Greeting */}
       <View style={styles.greetingRow}>
         <View>
@@ -72,7 +98,121 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult }: Home
         <StatusBadge label={user?.journey ?? 'care'} />
       </View>
 
-      {/* ST Emergency Alert — only when stemi_suspected = true */}
+      {/* ── Evac: Response Center Button ── */}
+      {isEvac && (
+        <View style={[styles.evacCTA, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}>
+          <View style={styles.evacCTALeft}>
+            <Text style={[styles.evacCTALabel, { color: 'rgba(13,27,42,0.70)' }]}>Response Center</Text>
+            <Text style={[styles.evacCTATitle, { color: theme.colors.navy }]}>Activate assisted response</Text>
+            <Text style={[styles.evacCTASub, { color: 'rgba(13,27,42,0.80)' }]}>Ambulance · NOK · Hospital pre-alert</Text>
+          </View>
+          <View style={styles.evacCTAIcon}>
+            <Text style={styles.evacCTAEmoji}>📞</Text>
+          </View>
+        </View>
+      )}
+
+      {/* ── Evac: Grid Cards ── */}
+      {isEvac && (
+        <View style={styles.evacGrid}>
+          {[
+            { emoji: '📍', title: 'Nearest Hospital', sub: 'Apollo · 6 min' },
+            { emoji: '🏥', title: 'ER Pre-alert',     sub: 'Ready' },
+            { emoji: '👥', title: 'Next of Kin',      sub: '2 linked' },
+            { emoji: '📋', title: 'Med Summary',      sub: 'Up to date' },
+          ].map(({ emoji, title, sub }) => (
+            <View key={title} style={[styles.evacCard, { borderColor: 'rgba(255,255,255,0.10)', backgroundColor: 'rgba(255,255,255,0.05)' }]}>
+              <Text style={styles.evacCardEmoji}>{emoji}</Text>
+              <Text style={[styles.evacCardTitle, { color: '#FFFFFF', fontFamily: theme.fonts.sansMedium }]}>{title}</Text>
+              <Text style={[styles.evacCardSub, { color: '#7DDDD5' }]}>{sub}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* ── Wellness: Body Brief Card ── */}
+      {isWellness && (
+        <View style={[styles.wellnessCard, { shadowColor: theme.colors.primary }]}>
+          <LinearGradient
+            colors={theme.gradients.pulse as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.wellnessCardGrad}
+          >
+            <Text style={styles.wellnessBriefLabel}>Body Brief</Text>
+            <Text style={styles.wellnessBriefText}>
+              You recovered well overnight. Stress trended low. Today is a green-light day.
+            </Text>
+            <View style={styles.wellnessMetricsRow}>
+              <View style={styles.wellnessRingPlaceholder}>
+                <Text style={styles.wellnessRingValue}>
+                  {metrics?.hrv_ms != null ? Math.min(99, Math.round(metrics.hrv_ms * 1.35)) : 84}
+                </Text>
+                <Text style={styles.wellnessRingLabel}>Readiness</Text>
+              </View>
+              <View style={styles.wellnessMetricsList}>
+                {[
+                  { label: 'Sleep', val: '7h 42m' },
+                  { label: 'HRV', val: metrics?.hrv_ms != null ? `${Math.round(metrics.hrv_ms)} ms` : '— ms' },
+                  { label: 'Resting HR', val: metrics?.avgHr != null ? `${Math.round(metrics.avgHr)} bpm` : '— bpm' },
+                ].map((m) => (
+                  <View key={m.label} style={styles.wellnessMetricItem}>
+                    <Text style={styles.wellnessMetricLabel}>{m.label}</Text>
+                    <Text style={styles.wellnessMetricVal}>{m.val}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      )}
+
+      {/* ── Wellness: Today's signals grid ── */}
+      {isWellness && (
+        <View>
+          <Text style={[styles.sectionLabel, { color: theme.colors.textTertiary, fontFamily: theme.fonts.sansSemiBold, fontSize: theme.fontSize.xs }]}>
+            TODAY'S SIGNALS
+          </Text>
+          <View style={styles.signalsGrid}>
+            {[
+              { emoji: '🫀', label: 'Pulse', value: metrics?.avgHr != null ? `${Math.round(metrics.avgHr)}` : '—', unit: 'bpm' },
+              { emoji: '⚡', label: 'Stress', value: 'Calm', unit: '' },
+              { emoji: '🌙', label: 'Recovery', value: metrics?.signalStrength != null ? `${Math.round(metrics.signalStrength * 0.84)}%` : '84%', unit: '' },
+              { emoji: '💧', label: 'Hydration', value: '68%', unit: '' },
+            ].map((s) => (
+              <View key={s.label} style={[styles.signalCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+                <Text style={styles.signalEmoji}>{s.emoji}</Text>
+                <Text style={[styles.signalLabel, { color: theme.colors.textSecondary }]}>{s.label}</Text>
+                <Text style={[styles.signalValue, { color: theme.colors.textPrimary, fontFamily: theme.fonts.displayBold }]}>
+                  {s.value}{s.unit ? <Text style={styles.signalUnit}> {s.unit}</Text> : null}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* ── Hospital: Care Plan Card ── */}
+      {isHospital && (
+        <View style={[styles.hospitalCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.hospitalCardTitle, { color: theme.colors.textPrimary, fontFamily: theme.fonts.displayBold }]}>
+            🏥 Recovery Plan Active
+          </Text>
+          <Text style={[styles.hospitalCardSub, { color: theme.colors.textSecondary }]}>
+            Post-discharge day 3 · Next check-in in 4 hours
+          </Text>
+          <View style={styles.hospitalTasks}>
+            {['Take 10mg Amlodipine', 'Blood pressure check', 'Attend physio session'].map((task, i) => (
+              <View key={i} style={styles.hospitalTaskRow}>
+                <Text style={{ color: theme.colors.primary, fontSize: 14 }}>✓</Text>
+                <Text style={[styles.hospitalTaskText, { color: theme.colors.textPrimary }]}>{task}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* ── ST Emergency Alert — only when stemi_suspected = true ── */}
       {stResult?.emergency_alert && (
         <View style={[styles.alertBanner, { backgroundColor: 'rgba(239,68,68,0.10)', borderColor: 'rgba(239,68,68,0.30)' }]}>
           <Text style={styles.alertBannerIcon}>🚨</Text>

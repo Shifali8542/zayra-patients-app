@@ -5,7 +5,6 @@ import { Spacing, Radius, Shadow } from './spacing';
 export const lightTheme = {
   isDark: false,
   colors: {
-    background: Colors.gradientBg,
     backgroundSolid: '#E4F7F5',
     surface: Colors.white,
     surfaceAlt: Colors.gray50,
@@ -65,6 +64,10 @@ export const lightTheme = {
     teal: Colors.gradientTeal as string[],
     navy: Colors.gradientNavy as string[],
     card: ['rgba(255,255,255,0.90)', 'rgba(255,255,255,0.70)'] as string[],
+    ink: Colors.gradientInk as string[],
+    pulse: Colors.gradientPulse as string[],
+    evac: Colors.gradientEvac as string[],
+    aqua: Colors.gradientAqua as string[],
   },
 };
 

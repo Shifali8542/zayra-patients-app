@@ -13,6 +13,10 @@ export const Colors = {
   gradientTeal: ['#00C2B2', '#0D1B2A'] as string[],
   gradientNavy: ['#0D1B2A', '#1B3A55'] as string[],
   gradientDarkBg: ['#0D1B2A', '#0F2235', '#0D1B2A'] as string[],
+  gradientInk: ['#1A2840', '#0D1B2A'] as string[],     // gradient-ink: dark navy CTA
+  gradientPulse: ['#0D1B2A', '#3B7BA8', '#7DC7C0'] as string[],  // gradient-pulse: wellness card
+  gradientEvac: ['#0D1B2A', '#112030'] as string[],   // gradient-evac: dark mode bg
+  gradientAqua: ['#00C2B2', '#7DDDD5'] as string[],   // gradient-aqua: evac CTA
 
   // Neutral
   white: '#FFFFFF',

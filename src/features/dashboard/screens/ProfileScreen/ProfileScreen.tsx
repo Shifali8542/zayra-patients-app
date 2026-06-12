@@ -2,16 +2,16 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { profileStyles as styles } from './ProfileScreen.style';
-import type { User, ClinicalInfo } from '../../../../types';
+import type { User, ClinicalInfo, JourneyType } from '../../../../types';
 
 interface ProfileScreenProps {
-  user: User;
+  user: User | null;
   onLogout: () => void;
   clinicalInfo: ClinicalInfo | null;
   onOpenSupport: () => void;
+  selectedJourney?: JourneyType;
+  onJourneySwitch?: (journey: JourneyType) => void;
 }
-
-const JOURNEYS = ['Wellness', 'Care', 'Evac', 'Hospital'] as const;
 
 function buildMenuItems(user: User, clinicalInfo: ClinicalInfo | null) {
   const ecg = clinicalInfo?.ecg_analysis;
@@ -29,8 +29,11 @@ function buildMenuItems(user: User, clinicalInfo: ClinicalInfo | null) {
   ];
 }
 
-export function ProfileScreen({ user, onLogout, clinicalInfo, onOpenSupport }: ProfileScreenProps) {
+export function ProfileScreen({ user, onLogout, clinicalInfo, onOpenSupport, selectedJourney = 'care', onJourneySwitch }: ProfileScreenProps) {
   const { theme, toggleTheme, isDark } = useTheme();
+
+  if (!user) return null;
+
   const menuItems = buildMenuItems(user, clinicalInfo);
   const initial = user.first_name?.[0] ?? user.email[0].toUpperCase();
 
@@ -95,15 +98,42 @@ export function ProfileScreen({ user, onLogout, clinicalInfo, onOpenSupport }: P
         </View>
       </TouchableOpacity>
 
-      {/* Journey Switcher */}
-      <View style={[styles.journeyCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.cardBorder, ...theme.shadow.card }]}>
-        <Text style={[styles.journeyCardLabel, { color: theme.colors.textTertiary, fontFamily: theme.fonts.sansRegular, fontSize: theme.fontSize.xs }]}>Switch journey</Text>
-        <View style={styles.journeyBtns}>
-          {JOURNEYS.map(j => {
-            const isActive = user.journey === j.toLowerCase();
+     {/* Journey Switcher */}
+      <View style={styles.sectionBlock}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textTertiary, fontFamily: theme.fonts.sansSemiBold, fontSize: theme.fontSize.xs }]}>
+          YOUR JOURNEY
+        </Text>
+        <View style={styles.journeyGrid}>
+          {([ 
+            { id: 'wellness' as JourneyType, emoji: '🫀', label: 'Wellness' },
+            { id: 'care'     as JourneyType, emoji: '⚡', label: 'Care'     },
+            { id: 'evac'     as JourneyType, emoji: '🛡',  label: 'Evac'    },
+            { id: 'hospital' as JourneyType, emoji: '🏥', label: 'Hospital' },
+          ]).map((j) => {
+            const isActive = selectedJourney === j.id;
             return (
-              <TouchableOpacity key={j} style={[styles.journeyBtn, { backgroundColor: isActive ? theme.colors.secondary : theme.colors.surfaceAlt }]} activeOpacity={0.8}>
-                <Text style={[styles.journeyBtnText, { color: isActive ? '#FFFFFF' : theme.colors.textSecondary, fontFamily: theme.fonts.sansMedium }]}>{j}</Text>
+              <TouchableOpacity
+                key={j.id}
+                onPress={() => onJourneySwitch?.(j.id)}
+                activeOpacity={0.75}
+                style={[
+                  styles.journeyChip,
+                  isActive
+                    ? { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
+                    : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={styles.journeyChipEmoji}>{j.emoji}</Text>
+                <Text style={[
+                  styles.journeyChipLabel,
+                  {
+                    color: isActive ? '#FFFFFF' : theme.colors.textSecondary,
+                    fontFamily: isActive ? theme.fonts.sansSemiBold : theme.fonts.sansRegular,
+                    fontSize: theme.fontSize.xs,
+                  },
+                ]}>
+                  {j.label}
+                </Text>
               </TouchableOpacity>
             );
           })}
