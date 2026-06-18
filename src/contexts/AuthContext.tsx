@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User, AuthTokens } from '../types';
 import { api, setTokens, setRefreshFailedCallback } from '../services/api';
 
-// ── Persistence keys ──────────────────────────────────────────────────────────
+// Persistence keys 
 const KEY_ACCESS  = 'zayra_access_token';
 const KEY_REFRESH = 'zayra_refresh_token';
 const KEY_USER    = 'zayra_user';
@@ -15,13 +15,13 @@ async function persistSession(user: User, tokens: AuthTokens): Promise<void> {
       [KEY_REFRESH, tokens.refresh],
       [KEY_USER,    JSON.stringify(user)],
     ]);
-  } catch { /* storage error — ignore */ }
+  } catch { }
 }
 
 async function clearSession(): Promise<void> {
   try {
     await AsyncStorage.multiRemove([KEY_ACCESS, KEY_REFRESH, KEY_USER]);
-  } catch { /* ignore */ }
+  } catch { }
 }
 
 async function restoreSession(): Promise<{ user: User; tokens: AuthTokens } | null> {
@@ -58,11 +58,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true); // true until session restore completes
   const [error, setError] = useState<string | null>(null);
 
-  // ── Restore session on app start ──────────────────────────────────────────
+  // Restore session on app start
   useEffect(() => {
     restoreSession().then((saved) => {
       if (saved) {
-        setTokens(saved.tokens);       // restore into api service
+        setTokens(saved.tokens);
         setUser(saved.user);
         setTokensState(saved.tokens);
         setIsAuthenticated(true);
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const { user: u, tokens: t } = await api.auth.login(email, password);
-      await persistSession(u, t);      // ← save to AsyncStorage
+      await persistSession(u, t); 
       setUser(u);
       setTokensState(t);
       setIsAuthenticated(true);
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       const { user: u, tokens: t } = await api.auth.register(name, email, password);
-      await persistSession(u, t);      // ← save to AsyncStorage
+      await persistSession(u, t);
       setUser(u);
       setTokensState(t);
       setIsAuthenticated(true);

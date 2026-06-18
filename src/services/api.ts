@@ -132,8 +132,6 @@ export function mapBackendUser(b: BackendUser): User {
 }
 
 // These build app-only types from raw backend responses.
-// Called in useDashboard — never expose raw backend shapes to screens.
-
 export function deriveHealthMetric(
   clinical: ClinicalInfo | null,
   aiRiskLevel: string | null,
@@ -288,7 +286,6 @@ export const api = {
   // Auth
 
   auth: {
-    /** POST /api/v1/auth/login/ */
     login: async (
       email: string,
       password: string,
@@ -357,6 +354,16 @@ export const api = {
     getClinicalInfo: async (recordId?: number): Promise<ClinicalInfo> => {
       const qs = recordId ? `?record_id=${recordId}` : '';
       return request<ClinicalInfo>(`/api/v1/patients/me/clinical-info/${qs}`);
+    },
+
+    getMyWaveform: async (recordId?: number): Promise<{ waveforms: Record<string, number[]> } | null> => {
+      const params = new URLSearchParams();
+      if (recordId) params.set('record_id', String(recordId));
+      params.set('channels', 'ii'); 
+      params.set('downsample', '8');
+      return request<{ waveforms: Record<string, number[]> }>(
+        `/api/v1/patients/me/waveform/?${params.toString()}`
+      );
     },
 
     bleUpload: async (payload: {

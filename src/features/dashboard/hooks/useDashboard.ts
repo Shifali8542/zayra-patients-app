@@ -1,23 +1,3 @@
-// =============================================================================
-// src/features/dashboard/hooks/useDashboard.ts
-// Real backend data. Zero mock imports.
-//
-// CACHING STRATEGY — "first visit calls API, revisit uses cache":
-//   Global state (patientMe, clinicalInfo, aiAnalysis, stResult) is fetched
-//   once on app load and stored in React state. Tab switches never re-fetch
-//   because the data lives in the parent DashboardWrapper, not in each screen.
-//
-//   Per-record cache (waveform, heartReport) uses useRef maps:
-//     waveformCache.current[record_id] = WaveformData
-//     heartReportCache.current[record_id] = HeartReport
-//   First visit per record → API call → store in ref.
-//   Revisit → read from ref → zero network request.
-//
-// STATIC CONTENT (no backend endpoints):
-//   Circle members, Journeys, Stories — app-defined constants.
-//   Clearly marked so they're easy to replace when backend endpoints exist.
-// =============================================================================
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   api,
@@ -41,9 +21,6 @@ import type {
   AIAnalysisResponse,
   PatientSTResult,
 } from '../../../types';
-
-// ─── Static app-defined content ───────────────────────────────────────────────
-// No backend endpoints for these. Replace with real API calls when built.
 
 const STATIC_CIRCLE_MEMBERS: CircleMember[] = [
   { id: '1', name: 'Emergency', initials: 'E', color: '#EF4444', relation: 'Emergency Contact' },
@@ -80,8 +57,7 @@ const STATIC_STORIES: Story[] = [
   },
 ];
 
-// ─── Dashboard state ──────────────────────────────────────────────────────────
-
+// Dashboard state
 interface DashboardState {
   // Derived from backend
   metrics: HealthMetric | null;
@@ -99,6 +75,7 @@ interface DashboardState {
   clinicalInfo: ClinicalInfo | null;
   aiAnalysis: AIAnalysisResponse | null;
   stResult: PatientSTResult | null;
+  ecgSamples: number[] | null;
   // Static content
   members: CircleMember[];
   journeys: Journey[];
@@ -109,7 +86,7 @@ interface DashboardState {
   noPatientProfile: boolean;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// Hook 
 
 export function useDashboard() {
   const [state, setState] = useState<DashboardState>({
@@ -126,6 +103,7 @@ export function useDashboard() {
     clinicalInfo: null,
     aiAnalysis: null,
     stResult: null,
+    ecgSamples: null,
     members: STATIC_CIRCLE_MEMBERS,
     journeys: STATIC_JOURNEYS,
     stories: STATIC_STORIES,
@@ -158,6 +136,17 @@ export function useDashboard() {
       // 4. ST result — 404 = not run yet
       const stResult = await api.assessments.getSTResult(firstId);
 
+      // 5. Waveform 
+      const ecgSamples = await api.patient
+        .getMyWaveform(firstId)
+        .then(res => {
+          if (!res?.waveforms) return null;
+          const key = Object.keys(res.waveforms).find(k => k.toLowerCase() === 'ii')
+            ?? Object.keys(res.waveforms)[0];
+          return key ? res.waveforms[key] : null;
+        })
+        .catch(() => null); 
+
       // Derive all app-level types
       const metrics       = deriveHealthMetric(clinicalInfo, aiAnalysis?.analysis?.risk_level ?? null);
       const timeline      = deriveTimeline(aiAnalysis, stResult);
@@ -171,6 +160,7 @@ export function useDashboard() {
         clinicalInfo,
         aiAnalysis,
         stResult,
+        ecgSamples,
         metrics,
         timeline,
         streak,

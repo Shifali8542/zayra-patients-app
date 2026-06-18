@@ -29,7 +29,6 @@ export function useBLEDevice(patientCode?: string): BLEDeviceHookResult {
   const vitalsRef         = useRef<BLEVitals | null>(null)
   const patientCodeRef    = useRef<string | undefined>(patientCode)
 
-  // Keep refs in sync so ECG callback always reads latest values without re-subscribing
   useEffect(() => { vitalsRef.current = vitals }, [vitals])
   useEffect(() => { patientCodeRef.current = patientCode }, [patientCode])
 
@@ -70,10 +69,12 @@ export function useBLEDevice(patientCode?: string): BLEDeviceHookResult {
       }
     })
     return () => { unsubStatus(); unsubVitals(); unsubError(); unsubECG() }
-  }, []) // patientCode intentionally excluded — read via patientCodeRef
+  }, []) 
 
   const connect    = useCallback(() => bleDeviceManager.connect(), [])
-  const disconnect = useCallback(() => bleDeviceManager.disconnect(), [])
+  const disconnect = useCallback(() => {
+    return bleDeviceManager.disconnect();
+  }, [])
 
   return { status, vitals, error, reconnectAttempt, ecgRingBufferRef, ecgWriteIndexRef, connect, disconnect }
 }

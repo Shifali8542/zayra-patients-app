@@ -6,8 +6,8 @@ const BLEContext = createContext<BLEDeviceHookResult | null>(null)
 
 export function BLEProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-const patientCode = (user as any)?.patient_code ?? undefined
-const ble = useBLEDevice(patientCode)
+  const patientCode = user?.patient_code ?? undefined
+  const ble = useBLEDevice(patientCode)
   return <BLEContext.Provider value={ble}>{children}</BLEContext.Provider>
 }
 

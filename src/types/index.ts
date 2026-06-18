@@ -20,6 +20,7 @@ export interface BackendUser {
   qualification: string | null;
   is_doctor: boolean;
   is_patient: boolean;
+  patient_code: string | null;
 }
 
 // App-level User 

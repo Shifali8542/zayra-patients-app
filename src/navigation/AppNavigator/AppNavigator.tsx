@@ -19,7 +19,7 @@ import type { TabParamList, JourneyType } from '../../types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-// Tab order: Home | Alyna | Rhythm | Circle | Stories | Profile
+// Tab order
 const TAB_ICONS: Record<string, string> = {
   Home: '🏠',
   Alyna: '✨',
@@ -29,7 +29,7 @@ const TAB_ICONS: Record<string, string> = {
   Profile: '👤',
 };
 
-// ─── Custom tab bar 
+// Custom tab bar 
 function CustomTabBar({ state, descriptors, navigation, isDark }: any) {
   const { theme } = useTheme();
   return (
@@ -84,7 +84,7 @@ function CustomTabBar({ state, descriptors, navigation, isDark }: any) {
   );
 }
 
-// ─── State screens (loading / error / no profile) ─────────────────────────────
+// State screen
 
 function LoadingScreen() {
   const { theme } = useTheme();
@@ -143,7 +143,7 @@ function DashboardWrapper({ selectedJourney, onJourneySwitch }: DashboardWrapper
   const dashboard = useDashboard();
   const isEvacJourney = selectedJourney === 'evac';
 
-  // Support navigation state — drives profile tab sub-screens
+  // Support navigation state
   const [supportView, setSupportView] = React.useState<
     { screen: 'list' } | { screen: 'chat'; ticketId: number } | null
   >(null);
@@ -178,6 +178,7 @@ function DashboardWrapper({ selectedJourney, onJourneySwitch }: DashboardWrapper
             interpretation={dashboard.interpretation}
             stResult={dashboard.stResult}
             journey={selectedJourney}
+            ecgSamples={dashboard.ecgSamples ?? null}
           />
         )}
       </Tab.Screen>

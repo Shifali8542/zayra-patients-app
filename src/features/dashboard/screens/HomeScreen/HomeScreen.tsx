@@ -17,6 +17,7 @@ interface HomeScreenProps {
   interpretation: string | null;
   stResult: PatientSTResult | null;
   journey?: 'wellness' | 'care' | 'evac' | 'hospital';
+  ecgSamples?: number[] | null;
 }
 
 function getGreeting(): string {
@@ -41,7 +42,7 @@ function fmt(val: number | null | undefined, decimals = 0): string {
   return decimals > 0 ? val.toFixed(decimals) : String(Math.round(val));
 }
 
-export function HomeScreen({ metrics, timeline, interpretation, stResult, journey = 'care' }: HomeScreenProps) {
+export function HomeScreen({ metrics, timeline, interpretation, stResult, journey = 'care', ecgSamples = null }: HomeScreenProps) {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { status: bleStatus, connect, disconnect } = useBLEContext();
@@ -65,7 +66,7 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult, journe
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-      {/* ── App header bar — icon only, matching web HomeTab ── */}
+      {/* App header bar */}
       <View style={styles.appHeader}>
         <ZayraLogo size={28} showText={false} variant="icon" />
         <View style={[
@@ -98,7 +99,7 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult, journe
         <StatusBadge label={user?.journey ?? 'care'} />
       </View>
 
-      {/* ── Evac: Response Center Button ── */}
+      {/* Evac */}
       {isEvac && (
         <View style={[styles.evacCTA, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}>
           <View style={styles.evacCTALeft}>
@@ -130,7 +131,7 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult, journe
         </View>
       )}
 
-      {/* ── Wellness: Body Brief Card ── */}
+      {/* Wellness: Body */}
       {isWellness && (
         <View style={[styles.wellnessCard, { shadowColor: theme.colors.primary }]}>
           <LinearGradient
@@ -250,15 +251,14 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult, journe
           </TouchableOpacity>
         </View>
 
-        {/* Real AI narrative replaces hardcoded string */}
         <Text style={[styles.monitorSubtext, { color: theme.colors.textPrimary, fontFamily: theme.fonts.sansMedium, fontSize: theme.fontSize.sm }]}>
           {interpretation ?? 'Monitoring your ECG data continuously.'}
         </Text>
 
-        <ECGChart height={56} />
+        <ECGChart height={56} samples={ecgSamples} />
 
         <View style={[styles.metricsRow, { borderTopWidth: 1, borderTopColor: theme.colors.divider }]}>
-          {/* Avg HR — from ecg_analysis.heart_rate_bpm */}
+          {/* Avg HR */}
           <View style={styles.metricCenter}>
             <Text style={[styles.metricValue, { color: theme.colors.textPrimary, fontFamily: theme.fonts.displayBold, fontSize: theme.fontSize.xxl }]}>
               {fmt(metrics?.avgHr)}
@@ -270,7 +270,7 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult, journe
 
           <View style={[styles.metricDivider, { backgroundColor: theme.colors.divider }]} />
 
-          {/* HRV — replaces SpO₂ (not available from ECG datasets) */}
+          {/* HRV */}
           <View style={styles.metricCenter}>
             <Text style={[styles.metricValue, { color: theme.colors.textPrimary, fontFamily: theme.fonts.displayBold, fontSize: theme.fontSize.xxl }]}>
               {fmt(metrics?.hrv_ms)}
@@ -282,7 +282,7 @@ export function HomeScreen({ metrics, timeline, interpretation, stResult, journe
 
           <View style={[styles.metricDivider, { backgroundColor: theme.colors.divider }]} />
 
-          {/* QRS Width — replaces Anomalies */}
+          {/* QRS Width */}
           <View style={styles.metricCenter}>
             <Text style={[styles.metricValue, { color: theme.colors.textPrimary, fontFamily: theme.fonts.displayBold, fontSize: theme.fontSize.xxl }]}>
               {fmt(metrics?.qrs_width_ms)}
